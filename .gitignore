@@ -1,0 +1,10 @@
+build/
+cmake-cache/
+*.tr
+*.pcap
+*.dat
+.vscode/
+.DS_Store
+.clang-format
+.clang-tidy
+.editorconfig
