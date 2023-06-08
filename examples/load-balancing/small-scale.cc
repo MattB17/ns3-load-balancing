@@ -47,6 +47,9 @@ using namespace ns3;
 NS_LOG_COMPONENT_DEFINE("SmallLoadBalanceExample");
 
 int main(int argc, char* argv[]) {
+    double START_TIME = 0.0;
+    double END_TIME = 0.5;
+
     CommandLine cmd(__FILE__);
     cmd.Parse(argc, argv);
 
@@ -124,4 +127,8 @@ int main(int argc, char* argv[]) {
             }
         }
     }
+
+    Simulator::Stop(Seconds(END_TIME));
+    Simulator::Run();
+    Simulator::Destroy();
 }
