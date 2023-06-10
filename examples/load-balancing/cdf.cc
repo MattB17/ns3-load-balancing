@@ -41,7 +41,7 @@ void LoadCdf(struct CdfTable* table, const char* file_name) {
 			e = (struct CdfEntry*)malloc(table->max_entries * sizeof(struct CdfEntry));
 			if (!e)
 				perror("Error: malloc entries in LoadCdf()");
-			for (table_idx = 0; table_idx < table->num_entries; table_idx++)
+			for (int table_idx = 0; table_idx < table->num_entries; table_idx++)
 				e[table_idx] = table->entries[table_idx];
 			free(table->entries);
 			table->entries = e;
@@ -62,11 +62,11 @@ void LoadCdf(struct CdfTable* table, const char* file_name) {
 }
 
 // Print CDF distribution information.
-double PrintCdf(struct CdfTable* table) {
+void PrintCdf(struct CdfTable* table) {
 	int i = 0;
 	if (!table)
 		return;
-	for (table_idx = 0; table_idx < table->num_entries; table_idx++)
+	for (int table_idx = 0; table_idx < table->num_entries; table_idx++)
 		printf("%.2f %.2f\n", table->entries[table_idx].value,
 			table->entries[table_idx].quantile);
 }
@@ -88,7 +88,7 @@ double AvgCdf(struct CdfTable* table) {
 			value = (table->entries[table_idx].value +
 				table->entries[table_idx - 1].value) / 2;
 			prob = (table->entries[table_idx].quantile -
-				table_entries[table_idx - 1].quantile);
+				table->entries[table_idx - 1].quantile);
 		}
 		avg += (value * prob);
 	}
@@ -98,7 +98,7 @@ double AvgCdf(struct CdfTable* table) {
 double Interpolate(double x, double x1, double y1, double x2, double y2) {
 	if (x1 == x2) {
 		return (y1 + y2) / 2;
-	else
+	} else {
 		return y1 + (((x - x1) / (x2 - x1)) * (y2 - y1));
 	}
 }

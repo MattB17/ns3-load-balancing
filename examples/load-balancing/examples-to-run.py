@@ -8,14 +8,6 @@
 #
 # See test.py for more information.
 cpp_examples = [
-    ("first", "True", "True"),
-    ("hello-simulator", "True", "True"),
-    ("second", "True", "True"),
-    ("third", "True", "True"),
-    ("fourth", "True", "True"),
-    ("fifth", "True", "True"),
-    ("sixth", "True", "True"),
-    ("seventh", "True", "True"),
     ("small-scale-lb", "True", "True")
 ]
 
@@ -25,6 +17,4 @@ cpp_examples = [
 #     (example_name, do_run).
 #
 # See test.py for more information.
-python_examples = [
-    ("first.py", "True"),
-]
+python_examples = []
