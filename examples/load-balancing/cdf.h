@@ -27,7 +27,7 @@ void InitCdf(struct CdfTable* table);
 void FreeCdf(struct CdfTable* table);
 
 // Get CDF distribution from a given file.
-void LoadCdf(struct CdfTable* table const char *file_name);
+void LoadCdf(struct CdfTable* table, const char *file_name);
 
 // Print CDF distribution information.
 void PrintCdf(struct CdfTable* table);

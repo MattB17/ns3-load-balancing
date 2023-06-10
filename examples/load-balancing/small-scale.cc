@@ -18,6 +18,7 @@
 #include "ns3/internet-module.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
+#include "ns3/ipv4-global-routing-helper.h"
 
 // Two-tier leaf spine topology.
 // S stands for spine, l stands for leaf, n represents server nodes
@@ -40,6 +41,10 @@
 //  n0 ...  n31   n32 ... n63 
 //
 
+extern "C" {
+    #include "cdf.h"
+}
+
 #define LINK_CAPACITY_BASE    1000000000          // 1Gbps
 
 using namespace ns3;
@@ -49,6 +54,8 @@ NS_LOG_COMPONENT_DEFINE("SmallLoadBalanceExample");
 int main(int argc, char* argv[]) {
     double START_TIME = 0.0;
     double END_TIME = 0.5;
+
+    std::string cdfFileName = "examples/load-balancing/DCTCP_CDF.txt";
 
     CommandLine cmd(__FILE__);
     cmd.Parse(argc, argv);
@@ -78,11 +85,12 @@ int main(int argc, char* argv[]) {
     servers.Create(SERVER_COUNT * LEAF_COUNT);
 
     InternetStackHelper internet;
-    Ipv4GlobalRoutingHelper(globalRoutingHelper);
+    Ipv4GlobalRoutingHelper globalRoutingHelper;
+    internet.SetRoutingHelper(globalRoutingHelper);
 
     internet.Install(servers);
     internet.Install(spines);
-    internet.install(leaves);
+    internet.Install(leaves);
 
     Ipv4AddressHelper ipv4;
     ipv4.SetBase("10.1.0.0", "255.255.255.0");
@@ -127,6 +135,24 @@ int main(int argc, char* argv[]) {
             }
         }
     }
+
+    Ipv4GlobalRoutingHelper::PopulateRoutingTables();
+
+    // Oversubscription ratio: ratio of total capacity of server to leaf links
+    // (max volume of traffic that can enter network) to total capacity of
+    // leaf to spine links (max volume that can circulate in network core).
+    double oversubRatio = static_cast<double>(
+        (SERVER_COUNT * LEAF_SERVER_CAPACITY) /
+        (SPINE_LEAF_CAPACITY * SPINE_COUNT * LINK_COUNT));
+    NS_LOG_INFO("Over-subscription Ratio: " << oversubRatio);
+
+    struct CdfTable* cdfTable = new CdfTable();
+    InitCdf(cdfTable);
+    LoadCdf(cdfTable, cdfFileName.c_str());
+
+    double cdfAvg = AvgCdf(cdfTable);
+    double requestRate = load * LEAF_SERVER_CAPACITY * SERVER_COUNT / oversubRatio / (8 * cdfAvg) / SERVER_COUNT;
+    NS_LOG_INFO("CDF average: " << cdfAvg << ", average request rate: " << requestRate << " per second"); 
 
     Simulator::Stop(Seconds(END_TIME));
     Simulator::Run();
