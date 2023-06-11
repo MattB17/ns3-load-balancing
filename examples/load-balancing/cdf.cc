@@ -25,7 +25,6 @@ void LoadCdf(struct CdfTable* table, const char* file_name) {
 	FILE *fd = NULL;
 	char line[256] = {0};
 	struct CdfEntry* e = NULL;
-	int i = 0;
 
 	if (!table)
 		return;
@@ -63,7 +62,6 @@ void LoadCdf(struct CdfTable* table, const char* file_name) {
 
 // Print CDF distribution information.
 void PrintCdf(struct CdfTable* table) {
-	int i = 0;
 	if (!table)
 		return;
 	for (int table_idx = 0; table_idx < table->num_entries; table_idx++)

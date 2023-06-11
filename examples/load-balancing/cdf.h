@@ -36,6 +36,6 @@ void PrintCdf(struct CdfTable* table);
 double AvgCdf(struct CdfTable* table);
 
 // Generate a random value based on a CDF distribution.
-double GenRandomFromCdf(struct CdfTable* table);
+double GenRandomCdfValue(struct CdfTable* table);
 
 #endif  // CDF_H
