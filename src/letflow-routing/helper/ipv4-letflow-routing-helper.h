@@ -7,18 +7,6 @@
 
 namespace ns3 {
 
-class Ipv4LetFlowRoutingHelper : public Ipv4RoutingHelper {
-public:
-	Ipv4LetFlowRoutingHelper();
-	Ipv4LetFlowRoutingHelper(const Ipv4LetFlowRoutingHelper&);
-
-	Ipv4LetFlowRoutingHelper* Copy(void) const;
-
-	virtual Ptr<Ipv4RoutingProtocol> Create(Ptr<Node> node) const;
-
-	Ptr<Ipv4LetFlowRoutingHelper> GetLetFlowRouting(Ptr<Ipv4> ipv4) const;
-};
-
 }  // namespace ns3
 
 #endif  // IPV4_LETFLOW_ROUTING_HELPER_H
