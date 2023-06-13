@@ -8,3 +8,4 @@ cmake-cache/
 .clang-format
 .clang-tidy
 .editorconfig
+.lock-ns3_darwin_build
