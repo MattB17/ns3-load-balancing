@@ -24,7 +24,9 @@ build_lib(
     LIBNAME letflow-routing
     SOURCE_FILES ${source_files}
     HEADER_FILES ${header_files}
-    LIBRARIES_TO_LINK ${libcore}
+    LIBRARIES_TO_LINK
+      ${libcore}
+      ${libinternet}
     TEST_SOURCES test/letflow-routing-test-suite.cc
                  ${examples_as_tests_sources}
 )
