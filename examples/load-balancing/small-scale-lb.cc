@@ -121,6 +121,10 @@ void InstallApplications(
 }
 
 int main(int argc, char* argv[]) {
+
+#if 1
+  LogComponentEnable("SmallLoadBalanceExample", LOG_LEVEL_INFO);
+#endif
     double START_TIME = 0.0;
     double END_TIME = 0.5;
     double FLOW_LAUNCH_END_TIME = 0.2;

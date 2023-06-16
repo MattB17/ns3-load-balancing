@@ -124,6 +124,7 @@ main(int argc, char* argv[])
     ipv4.SetBase("10.3.3.0", "255.255.255.0");
     Ipv4InterfaceContainer i1i3 = ipv4.Assign(d1d3);
 
+    // Setting cost to `sampleMetric` on both ends of the n1 to n3 link.
     i1i3.SetMetric(0, sampleMetric);
     i1i3.SetMetric(1, sampleMetric);
 

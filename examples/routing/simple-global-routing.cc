@@ -77,6 +77,7 @@ main(int argc, char* argv[])
     NS_LOG_INFO("Create nodes.");
     NodeContainer c;
     c.Create(4);
+    // Containers for the connected pairs: n0 and n2, n1 and n2, n2 and n3.
     NodeContainer n0n2 = NodeContainer(c.Get(0), c.Get(2));
     NodeContainer n1n2 = NodeContainer(c.Get(1), c.Get(2));
     NodeContainer n3n2 = NodeContainer(c.Get(3), c.Get(2));
@@ -87,12 +88,16 @@ main(int argc, char* argv[])
     // We create the channels first without any IP addressing information
     NS_LOG_INFO("Create channels.");
     PointToPointHelper p2p;
+    // The links between n0 and n2 and n1 and n2 both have a rate of 5Mbps
+    // and a delay of 2ms.
     p2p.SetDeviceAttribute("DataRate", StringValue("5Mbps"));
     p2p.SetChannelAttribute("Delay", StringValue("2ms"));
     NetDeviceContainer d0d2 = p2p.Install(n0n2);
 
     NetDeviceContainer d1d2 = p2p.Install(n1n2);
 
+    // The link between n2 and n3 has a rate of 1.5Mbps = 1500kbps and
+    // a delay of 10ms.
     p2p.SetDeviceAttribute("DataRate", StringValue("1500kbps"));
     p2p.SetChannelAttribute("Delay", StringValue("10ms"));
     NetDeviceContainer d3d2 = p2p.Install(n3n2);
@@ -100,12 +105,19 @@ main(int argc, char* argv[])
     // Later, we add IP addresses.
     NS_LOG_INFO("Assign IP Addresses.");
     Ipv4AddressHelper ipv4;
+
+    // Install 10.1.1.x addresses on n0's device and n2's device on the
+    // n0 to n2 link.
     ipv4.SetBase("10.1.1.0", "255.255.255.0");
     Ipv4InterfaceContainer i0i2 = ipv4.Assign(d0d2);
 
+    // Install 10.1.2.x addresses on n1's device and n2's device on the
+    // n1 to n2 link.
     ipv4.SetBase("10.1.2.0", "255.255.255.0");
     Ipv4InterfaceContainer i1i2 = ipv4.Assign(d1d2);
 
+    // Install 10.1.3.x addresses on n2's device and n3's device on the
+    // n2 to n3 link.
     ipv4.SetBase("10.1.3.0", "255.255.255.0");
     Ipv4InterfaceContainer i3i2 = ipv4.Assign(d3d2);
 
@@ -117,31 +129,43 @@ main(int argc, char* argv[])
     // 210 bytes at a rate of 448 Kb/s
     NS_LOG_INFO("Create Applications.");
     uint16_t port = 9; // Discard port (RFC 863)
+    // i3i2 contains the interfaces for devices of node 3 and 2 on the n2 to
+    // n3 link. So `i3i2.GetAddress(0)` retrieves the address of n3's device
+    // on this interface. So where the traffic is destined.
     OnOffHelper onoff("ns3::UdpSocketFactory",
                       Address(InetSocketAddress(i3i2.GetAddress(0), port)));
     onoff.SetConstantRate(DataRate("448kb/s"));
+    // Install the application on node n0 to start at 1.0 seconds.
     ApplicationContainer apps = onoff.Install(c.Get(0));
     apps.Start(Seconds(1.0));
     apps.Stop(Seconds(10.0));
 
-    // Create a packet sink to receive these packets
+    // Create a packet sink to receive these packets.
+    // Receives UDP datagrams on that port from any IP address.
     PacketSinkHelper sink("ns3::UdpSocketFactory",
                           Address(InetSocketAddress(Ipv4Address::GetAny(), port)));
+    // Install it on node n3 to also start at 1.0 seconds.
     apps = sink.Install(c.Get(3));
     apps.Start(Seconds(1.0));
     apps.Stop(Seconds(10.0));
 
-    // Create a similar flow from n3 to n1, starting at time 1.1 seconds
+    // Create a similar flow from n3 to n1, starting at time 1.1 seconds.
+    // i1i2 stores the addresses for the devices of n1 and n2 on the n1 to n2
+    // link and so `i1i2.GetAddress(0)` retrieves the IP Address of n1's
+    // device on this link which is the destination for n3.
     onoff.SetAttribute("Remote", AddressValue(InetSocketAddress(i1i2.GetAddress(0), port)));
+    // Install the application on n3.
     apps = onoff.Install(c.Get(3));
     apps.Start(Seconds(1.1));
     apps.Stop(Seconds(10.0));
 
-    // Create a packet sink to receive these packets
+    // Create a packet sink to receive these packets.
+    // Allow n1 to receive these packets.
     apps = sink.Install(c.Get(1));
     apps.Start(Seconds(1.1));
     apps.Stop(Seconds(10.0));
 
+    // Setup tracing.
     AsciiTraceHelper ascii;
     p2p.EnableAsciiAll(ascii.CreateFileStream("simple-global-routing.tr"));
     p2p.EnablePcapAll("simple-global-routing");
