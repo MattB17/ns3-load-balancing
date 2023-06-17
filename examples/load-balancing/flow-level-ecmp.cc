@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
     Config::SetDefault("ns3::OnOffApplication::DataRate", StringValue("448kb/s"));
 
     // Setup ECMP routing.
-    Config::SetDefault("ns3::Ipv4GlobalRouting::PerflowEcmpRouting", BooleanValue(true));
+    Config::SetDefault("ns3::Ipv4GlobalRouting::RandomEcmpRouting", BooleanValue(true));
 
     uint32_t numNodesInCenter = 3;
 
@@ -75,7 +75,7 @@ int main(int argc, char* argv[]) {
     InternetStackHelper internet;
     internet.Install(n);
 
-    Ipv4AddressHelper ivp4L;
+    Ipv4AddressHelper ipv4L;
     ipv4L.SetBase("10.1.1.0", "255.255.255.0");
     Ipv4AddressHelper ipv4R;
     ipv4R.SetBase("10.1.2.0", "255.255.255.0");
@@ -89,15 +89,28 @@ int main(int argc, char* argv[]) {
     Ipv4InterfaceContainer iic;
 
     // Add the necessary IP addresses and point to point links.
+    // We add the links from n0 to all of n1 to nk where k = numNodesInCenter
+    // and all the links from n1 to nk to n_k+1.
     for (int node_idx = 1; node_idx <= numNodesInCenter; node_idx++) {
         nc = NodeContainer(n.Get(0), n.Get(node_idx));
         ndc = p2p.Install(nc);
-        iic = ipv4L.Install(ndc);
+        iic = ipv4L.Assign(ndc);
 
         nc = NodeContainer(n.Get(node_idx), n.Get(numNodesInCenter + 1));
         ndc = p2p.Install(nc);
-        iic = Ipv4R.Install(ndc);
+        iic = ipv4R.Assign(ndc);
     }
+
+    // Add the last link and IP address for the nodes n_k+1 to n_k+2 where
+    // k = numNodesInCenter.
+    p2p.SetDeviceAttribute("DataRate", StringValue("15Mbps"));
+    p2p.SetChannelAttribute("Delay", StringValue("10ms"));
+    nc = NodeContainer(n.Get(numNodesInCenter+1), n.Get(numNodesInCenter+2));
+    ndc = p2p.Install(nc);
+
+    Ipv4AddressHelper ipv4;
+    ipv4.SetBase("10.1.3.0", "255.255.255.0");
+    iic = ipv4.Assign(ndc);
 
     Simulator::Stop(Seconds(11));
     Simulator::Run();
