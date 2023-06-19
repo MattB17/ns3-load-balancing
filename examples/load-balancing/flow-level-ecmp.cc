@@ -48,6 +48,26 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("FlowLevelEcmpRouting");
 
+void InstallSourceAndSink(uint16_t port_num, Ptr<Node> src_node,
+                          Ptr<Node> dst_node, Ipv4Address dst_addr,
+                          std::string data_rate, double start_time,
+                          double end_time) {
+    OnOffHelper onoff("ns3::TcpSocketFactory", Address(InetSocketAddress(
+        dst_addr, port_num)));
+    onoff.SetConstantRate(DataRate(data_rate));
+    ApplicationContainer src_app = onoff.Install(src_node);
+    src_app.Start(Seconds(start_time));
+    src_app.Stop(Seconds(end_time));
+
+    // Create a packet sink to receive the packets.
+    // Accepts a connection from any IP address on that port.
+    PacketSinkHelper sink("ns3::TcpSocketFactory", Address(InetSocketAddress(
+        Ipv4Address::GetAny(), port_num)));
+    ApplicationContainer dst_app = sink.Install(dst_node);
+    dst_app.Start(Seconds(start_time));
+    dst_app.Stop(Seconds(end_time));
+}
+
 int main(int argc, char* argv[]) {
     // turning on explicit debugging.
 #if 1
@@ -81,9 +101,11 @@ int main(int argc, char* argv[]) {
     Ipv4AddressHelper ipv4R;
     ipv4R.SetBase("10.1.2.0", "255.255.255.0");
 
-    PointToPointHelper p2p;
-    p2p.SetDeviceAttribute("DataRate", StringValue("5Mbps"));
-    p2p.SetChannelAttribute("Delay", StringValue("2ms"));
+    // We think of every node other than the last as being part of the core
+    // network infrastructure.
+    PointToPointHelper p2pInternal;
+    p2pInternal.SetDeviceAttribute("DataRate", StringValue("5Mbps"));
+    p2pInternal.SetChannelAttribute("Delay", StringValue("2ms"));
 
     NodeContainer nc;
     NetDeviceContainer ndc;
@@ -94,20 +116,22 @@ int main(int argc, char* argv[]) {
     // and all the links from n1 to nk to n_k+1.
     for (int node_idx = 1; node_idx <= numNodesInCenter; node_idx++) {
         nc = NodeContainer(n.Get(0), n.Get(node_idx));
-        ndc = p2p.Install(nc);
+        ndc = p2pInternal.Install(nc);
         iic = ipv4L.Assign(ndc);
 
         nc = NodeContainer(n.Get(node_idx), n.Get(numNodesInCenter + 1));
-        ndc = p2p.Install(nc);
+        ndc = p2pInternal.Install(nc);
         iic = ipv4R.Assign(ndc);
     }
 
     // Add the last link and IP address for the nodes n_k+1 to n_k+2 where
     // k = numNodesInCenter.
-    p2p.SetDeviceAttribute("DataRate", StringValue("15Mbps"));
-    p2p.SetChannelAttribute("Delay", StringValue("10ms"));
+    // We think of the last node as being an edge node.
+    PointToPointHelper p2pEdge;
+    p2pEdge.SetDeviceAttribute("DataRate", StringValue("15Mbps"));
+    p2pEdge.SetChannelAttribute("Delay", StringValue("10ms"));
     nc = NodeContainer(n.Get(numNodesInCenter+1), n.Get(numNodesInCenter+2));
-    ndc = p2p.Install(nc);
+    ndc = p2pEdge.Install(nc);
 
     Ipv4AddressHelper ipv4;
     ipv4.SetBase("10.1.3.0", "255.255.255.0");
@@ -119,49 +143,32 @@ int main(int argc, char* argv[]) {
     // Create the OnOff application to send UDP datagrams of size 210 bytes at
     // a rate of 448 Kb/s.
     uint16_t port = 9;  // Discard port (RFC 863).
-    // Destined to the last node.
-    OnOffHelper onoff("ns3::TcpSocketFactory", Address(
-        InetSocketAddress(iic.GetAddress(1), port)));
-    onoff.SetConstantRate(DataRate("448kb/s"));
-    // Install application on node 0.
-    ApplicationContainer apps = onoff.Install(n.Get(0));
-    apps.Start(Seconds(1.0));
-    apps.Stop(Seconds(10.0));
-
-    // Create a packet sink to receive the packets.
-    // Accepts a connection from any IP address on that port.
-    PacketSinkHelper sink("ns3::TcpSocketFactory", Address(
-        InetSocketAddress(Ipv4Address::GetAny(), port)));
-    apps = sink.Install(n.Get(numNodesInCenter + 2));
-    apps.Start(Seconds(1.0));
-    apps.Stop(Seconds(10.0));
+    InstallSourceAndSink(port, n.Get(0), n.Get(numNodesInCenter + 2),
+                         iic.GetAddress(1), "448kb/s", 1.0, 10.0);
 
     // A second application sending at a rate of 667 Kb/s.
     uint16_t port2 =  18;
-    OnOffHelper onoff2("ns3::TcpSocketFactory", Address(
-        InetSocketAddress(iic.GetAddress(1), port2)));
-    onoff2.SetConstantRate(DataRate("667kb/s"));
-    apps = onoff2.Install(n.Get(0));
-    apps.Start(Seconds(2.0));
-    apps.Stop(Seconds(10.0));
+    InstallSourceAndSink(port2, n.Get(0), n.Get(numNodesInCenter + 2),
+                         iic.GetAddress(1), "667kb/s", 1.5, 10.0);
 
-    PacketSinkHelper sink2("ns3::TcpSocketFactory", Address(
-        InetSocketAddress(Ipv4Address::GetAny(), port2)));
-    apps = sink2.Install(n.Get(numNodesInCenter + 2));
-    apps.Start(Seconds(2.0));
-    apps.Stop(Seconds(10.0));
+    // A third application sending at a rate of 448 Kb/s.
+    uint16_t port3 = 27;
+    InstallSourceAndSink(port3, n.Get(0), n.Get(numNodesInCenter + 2),
+                         iic.GetAddress(1), "448kb/s", 2.0, 10.0);
 
     AsciiTraceHelper ascii;
-    p2p.EnableAsciiAll(ascii.CreateFileStream("flow-level-ecmp.tr"));
-    p2p.EnablePcapAll("flow-level-ecmp");
+    p2pInternal.EnableAsciiAll(ascii.CreateFileStream("flow-level-ecmp.tr"));
+    p2pInternal.EnablePcapAll("flow-level-ecmp");
 
     FlowMonitorHelper flowmonHelper;
     flowmonHelper.InstallAll();
 
-    flowmonHelper.SerializeToXmlFile("flow-level-ecmp.flowmon", false, false);
-
     Simulator::Stop(Seconds(11.0));
     Simulator::Run();
+
+    // Needs to be after the run command to pick up the flows.
+    flowmonHelper.SerializeToXmlFile("flow-level-ecmp.flowmon", true, false);
+
     Simulator::Destroy();
 
 }
