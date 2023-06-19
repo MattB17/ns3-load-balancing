@@ -15,10 +15,8 @@
  *
  */
 
-#include <iostream>
-#include <fstream>
 #include <string>
-#include <cassert>
+#include <vector>
 
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
@@ -48,10 +46,15 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("FlowLevelEcmpRouting");
 
+template<typename T>
+T RandRange(T min, T max) {
+    return min + (((double)max - min) * (rand() / RAND_MAX));
+}
+
 void InstallSourceAndSink(uint16_t port_num, Ptr<Node> src_node,
                           Ptr<Node> dst_node, Ipv4Address dst_addr,
-                          std::string data_rate, double start_time,
-                          double end_time) {
+                          double start_time, double end_time,
+                          std::string data_rate) {
     OnOffHelper onoff("ns3::TcpSocketFactory", Address(InetSocketAddress(
         dst_addr, port_num)));
     onoff.SetConstantRate(DataRate(data_rate));
@@ -68,25 +71,46 @@ void InstallSourceAndSink(uint16_t port_num, Ptr<Node> src_node,
     dst_app.Stop(Seconds(end_time));
 }
 
+void InstallApplications(uint16_t start_port, size_t num_flows,
+                         Ptr<Node> src_node, Ptr<Node> dst_node, 
+                         Ipv4Address dst_addr, double start_time,
+                         double flow_launch_end_time, double end_time,
+                         std::vector<std::string> data_rates) {
+    uint16_t curr_port = start_port;
+    double curr_flow_launch_time;
+    std::string curr_data_rate;
+    for (size_t flow_idx = 0; flow_idx < num_flows; flow_idx++) {
+        curr_flow_launch_time = RandRange(start_time, flow_launch_end_time);
+        curr_data_rate = data_rates[RandRange((size_t)0, data_rates.size() - 1)];
+        InstallSourceAndSink(curr_port, src_node, dst_node, dst_addr,
+                             curr_flow_launch_time, end_time, curr_data_rate);
+        curr_port++;
+    }
+}
+
 int main(int argc, char* argv[]) {
     // turning on explicit debugging.
 #if 1
     LogComponentEnable("FlowLevelEcmpRouting", LOG_LEVEL_INFO);
 #endif
 
-    // Packets have size 210 and the data rate is 448kb/s.
+    // Packets have size 210 and the data rate is 500kb/s.
     Config::SetDefault("ns3::OnOffApplication::PacketSize", UintegerValue(210));
-    Config::SetDefault("ns3::OnOffApplication::DataRate", StringValue("448kb/s"));
+    Config::SetDefault("ns3::OnOffApplication::DataRate", StringValue("500kb/s"));
 
     // Setup ECMP routing.
     Config::SetDefault("ns3::Ipv4GlobalRouting::RandomEcmpRouting", BooleanValue(true));
 
     uint32_t numNodesInCenter = 3;
+    size_t numSmallFlows = 15;
 
     CommandLine cmd;
     cmd.AddValue("numNodesInCenter", 
                  "Number of nodes in each level of the topology",
                  numNodesInCenter);
+    cmd.AddValue("numSmallFlows",
+                 "number of small flows to start in the simulation",
+                 numSmallFlows);
     cmd.Parse(argc, argv);
 
     // Create the nodes and link them together.
@@ -140,21 +164,14 @@ int main(int argc, char* argv[]) {
     // Initialize routing database and set up the routing tables in the nodes.
     Ipv4GlobalRoutingHelper::PopulateRoutingTables();
 
-    // Create the OnOff application to send UDP datagrams of size 210 bytes at
-    // a rate of 448 Kb/s.
-    uint16_t port = 9;  // Discard port (RFC 863).
-    InstallSourceAndSink(port, n.Get(0), n.Get(numNodesInCenter + 2),
-                         iic.GetAddress(1), "448kb/s", 1.0, 10.0);
+    std::vector<std::string> data_rates = {"400kb/s", "500kb/s", "600kb/s"};
+    InstallApplications(1000, numSmallFlows, n.Get(0),
+                        n.Get(numNodesInCenter + 2), iic.GetAddress(1),
+                        1.0, 5.0, 10.0, data_rates);
 
-    // A second application sending at a rate of 667 Kb/s.
-    uint16_t port2 =  18;
-    InstallSourceAndSink(port2, n.Get(0), n.Get(numNodesInCenter + 2),
-                         iic.GetAddress(1), "667kb/s", 1.5, 10.0);
-
-    // A third application sending at a rate of 448 Kb/s.
-    uint16_t port3 = 27;
-    InstallSourceAndSink(port3, n.Get(0), n.Get(numNodesInCenter + 2),
-                         iic.GetAddress(1), "448kb/s", 2.0, 10.0);
+    InstallSourceAndSink(1000 + numSmallFlows, n.Get(0),
+                         n.Get(numNodesInCenter + 2), iic.GetAddress(1),
+                         6.0, 10.0, "3Mbps");
 
     AsciiTraceHelper ascii;
     p2pInternal.EnableAsciiAll(ascii.CreateFileStream("flow-level-ecmp.tr"));
