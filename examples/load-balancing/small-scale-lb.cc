@@ -17,6 +17,7 @@
 #include "ns3/internet-module.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
+#include "ns3/flow-monitor-helper.h"
 #include "ns3/ipv4-global-routing-helper.h"
 
 #include "cdf.h"
@@ -128,6 +129,9 @@ int main(int argc, char* argv[]) {
     double START_TIME = 0.0;
     double END_TIME = 0.5;
     double FLOW_LAUNCH_END_TIME = 0.2;
+
+    // Setup ECMP routing.
+    Config::SetDefault("ns3::Ipv4GlobalRouting::RandomEcmpRouting", BooleanValue(true));
 
     std::string cdfFileName = "examples/load-balancing/DCTCP_CDF.txt";
     unsigned randomSeed = 0;
@@ -258,8 +262,19 @@ int main(int argc, char* argv[]) {
             FLOW_LAUNCH_END_TIME);
     }
 
+    AsciiTraceHelper ascii;
+    p2pLeafToSpine.EnableAsciiAll(ascii.CreateFileStream("small-scale-lb.tr"));
+    p2pLeafToSpine.EnablePcapAll("small-scale-lb");
+
+    FlowMonitorHelper flowmonHelper;
+    flowmonHelper.InstallAll();
+
     Simulator::Stop(Seconds(END_TIME));
     Simulator::Run();
+
+    // Needs to be after the run command to pick up the flows.
+    flowmonHelper.SerializeToXmlFile("small-scale-lb.flowmon", true, true);
+
     Simulator::Destroy();
 
     FreeCdf(cdfTable);

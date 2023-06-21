@@ -8,6 +8,7 @@ build_example(
     ${libpoint-to-point}
     ${libinternet}
     ${libapplications}
+    ${libflow-monitor}
 )
 
 build_example(

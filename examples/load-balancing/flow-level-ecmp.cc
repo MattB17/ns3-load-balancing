@@ -169,10 +169,6 @@ int main(int argc, char* argv[]) {
                         n.Get(numNodesInCenter + 2), iic.GetAddress(1),
                         1.0, 5.0, 10.0, data_rates);
 
-    InstallSourceAndSink(1000 + numSmallFlows, n.Get(0),
-                         n.Get(numNodesInCenter + 2), iic.GetAddress(1),
-                         6.0, 10.0, "3Mbps");
-
     AsciiTraceHelper ascii;
     p2pInternal.EnableAsciiAll(ascii.CreateFileStream("flow-level-ecmp.tr"));
     p2pInternal.EnablePcapAll("flow-level-ecmp");
