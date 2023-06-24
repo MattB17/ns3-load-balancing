@@ -534,4 +534,28 @@ FlowMonitor::SerializeToXmlFile(std::string fileName, bool enableHistograms, boo
     os.close();
 }
 
+void FlowMonitor::FlowCompletionTimesToStream(std::ostream& os) {
+    NS_LOG_FUNCTION(this);
+    for (FlowStatsContainerCI flowI = m_flowStats.begin(); flowI != m_flowStats.end(); flowI++) {
+        TimeWithUnit completionTime = (
+            flowI->second.timeLastRxPacket -
+            flowI->second.timeFirstTxPacket).As(Time::NS);
+        os << flowI->first << " " << completionTime << "\n";
+    }
+}
+
+std::string FlowMonitor::FlowCompletionTimesToString() {
+    NS_LOG_FUNCTION(this);
+    std::ostringstream os;
+    FlowCompletionTimesToStream(os);
+    return os.str();
+}
+
+void FlowMonitor::FlowCompletionTimesToFile(std::string fileName) {
+    NS_LOG_FUNCTION(this << fileName);
+    std::ofstream os(fileName, std::ios::out | std::ios::binary);
+    FlowCompletionTimesToStream(os);
+    os.close();
+}
+
 } // namespace ns3

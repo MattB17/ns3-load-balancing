@@ -273,6 +273,17 @@ class FlowMonitor : public Object
     /// \param enableProbes if true, include also the per-probe/flow pair statistics in the output
     void SerializeToXmlFile(std::string fileName, bool enableHistograms, bool enableProbes);
 
+    /// Writes the flow completion times to an std::ostream
+    /// \param os the output stream
+    void FlowCompletionTimesToStream(std::ostream& os);
+
+    /// Same as FlowCompletionTimesToStream, but returns the output as a std::string
+    std::string FlowCompletionTimesToString();
+
+    /// Same as FlowCompletionTimesToStream, but writes to a file instead
+    /// \param fileName name or path of the output file that will be created
+    void FlowCompletionTimesToFile(std::string fileName);
+
   protected:
     void NotifyConstructionCompleted() override;
     void DoDispose() override;
