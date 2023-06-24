@@ -534,27 +534,29 @@ FlowMonitor::SerializeToXmlFile(std::string fileName, bool enableHistograms, boo
     os.close();
 }
 
-void FlowMonitor::FlowCompletionTimesToStream(std::ostream& os) {
+void FlowMonitor::FlowCompletionTimesToStream(std::ostream& os,
+                                              Time::Unit timeUnit) {
     NS_LOG_FUNCTION(this);
     for (FlowStatsContainerCI flowI = m_flowStats.begin(); flowI != m_flowStats.end(); flowI++) {
         TimeWithUnit completionTime = (
             flowI->second.timeLastRxPacket -
-            flowI->second.timeFirstTxPacket).As(Time::NS);
+            flowI->second.timeFirstTxPacket).As(timeUnit);
         os << flowI->first << " " << completionTime << "\n";
     }
 }
 
-std::string FlowMonitor::FlowCompletionTimesToString() {
+std::string FlowMonitor::FlowCompletionTimesToString(Time::Unit timeUnit) {
     NS_LOG_FUNCTION(this);
     std::ostringstream os;
-    FlowCompletionTimesToStream(os);
+    FlowCompletionTimesToStream(os, timeUnit);
     return os.str();
 }
 
-void FlowMonitor::FlowCompletionTimesToFile(std::string fileName) {
+void FlowMonitor::FlowCompletionTimesToFile(std::string fileName,
+                                            Time::Unit timeUnit) {
     NS_LOG_FUNCTION(this << fileName);
     std::ofstream os(fileName, std::ios::out | std::ios::binary);
-    FlowCompletionTimesToStream(os);
+    FlowCompletionTimesToStream(os, timeUnit);
     os.close();
 }
 

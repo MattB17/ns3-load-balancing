@@ -16,6 +16,7 @@
 #include "ns3/core-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/network-module.h"
+#include "ns3/nstime.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/flow-monitor-helper.h"
 #include "ns3/ipv4-global-routing-helper.h"
@@ -54,7 +55,7 @@ static uint16_t PORT = 1000;
 
 using namespace ns3;
 
-NS_LOG_COMPONENT_DEFINE("SmallLoadBalanceExample");
+NS_LOG_COMPONENT_DEFINE("FatTree2TierLBExample");
 
 double PoissonGenInterval(double avgRate) {
     if (avgRate > 0) {
@@ -124,7 +125,7 @@ void InstallApplications(
 int main(int argc, char* argv[]) {
 
 #if 1
-  LogComponentEnable("SmallLoadBalanceExample", LOG_LEVEL_INFO);
+  LogComponentEnable("FatTree2TierLBExample", LOG_LEVEL_INFO);
 #endif
     double START_TIME = 0.0;
     double END_TIME = 0.5;
@@ -273,8 +274,8 @@ int main(int argc, char* argv[]) {
     }
 
     AsciiTraceHelper ascii;
-    p2pLeafToSpine.EnableAsciiAll(ascii.CreateFileStream("small-scale-lb.tr"));
-    p2pLeafToSpine.EnablePcapAll("small-scale-lb");
+    p2pLeafToSpine.EnableAsciiAll(ascii.CreateFileStream("outputs/fat-tree-2-tier.tr"));
+    p2pLeafToSpine.EnablePcapAll("outputs/fat-tree-2-tier");
 
     FlowMonitorHelper flowmonHelper;
     flowmonHelper.InstallAll();
@@ -283,7 +284,9 @@ int main(int argc, char* argv[]) {
     Simulator::Run();
 
     // Needs to be after the run command to pick up the flows.
-    flowmonHelper.SerializeToXmlFile("small-scale-lb.flowmon", true, true);
+    flowmonHelper.SerializeToXmlFile("outputs/fat-tree-2-tier.flowmon", true, true);
+    flowmonHelper.FlowCompletionTimesToFile(
+        "outputs/fat-tree-2-tier-completion-times.txt", Time::NS);
 
     Simulator::Destroy();
 

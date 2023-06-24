@@ -171,4 +171,32 @@ FlowMonitorHelper::SerializeToXmlFile(std::string fileName,
     }
 }
 
+void FlowMonitorHelper::FlowCompletionTimesToStream(std::ostream& os,
+                                                    Time::Unit timeUnit)
+{
+    if (m_flowMonitor)
+    {
+        m_flowMonitor->FlowCompletionTimesToStream(os, timeUnit);
+    }
+}
+
+std::string
+FlowMonitorHelper::FlowCompletionTimesToString(Time::Unit timeUnit)
+{
+    if (m_flowMonitor)
+    {
+        return m_flowMonitor->FlowCompletionTimesToString(timeUnit);
+    }
+    return "";
+}
+
+void FlowMonitorHelper::FlowCompletionTimesToFile(std::string fileName,
+                                                  Time::Unit timeUnit)
+{
+    if (m_flowMonitor)
+    {
+        m_flowMonitor->FlowCompletionTimesToFile(fileName, timeUnit);
+    }
+}
+
 } // namespace ns3

@@ -119,6 +119,28 @@ class FlowMonitorHelper
      */
     void SerializeToXmlFile(std::string fileName, bool enableHistograms, bool enableProbes);
 
+    /**
+     * Writes the flow completion times to an std::ostream
+     * \param os the output stream
+     * \param timeUnit the unit of time for reporting completion times (default is nanoseconds)
+     */
+    void FlowCompletionTimesToStream(std::ostream& os,
+                                     Time::Unit timeUnit = Time::NS);
+
+    /**
+     * Same as FlowCompletionTimesToStream, but returns the output as a std::string
+     * \param timeUnit the unit of time for reporting completion times (default is nanoseconds)
+     */
+    std::string FlowCompletionTimesToString(Time::Unit timeUnit = Time::NS);
+
+    /**
+     * Same as FlowCompletionTimesToStream, but writes to a file instead
+     * \param fileName name or path of the output file that will be created
+     * \param timeUnit the unit of time for reporting completion times (default is nanoseconds)
+     */
+    void FlowCompletionTimesToFile(std::string fileName,
+                                   Time::Unit timeUnit = Time::NS);
+
   private:
     ObjectFactory m_monitorFactory;        //!< Object factory
     Ptr<FlowMonitor> m_flowMonitor;        //!< the FlowMonitor object

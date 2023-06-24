@@ -1,5 +1,6 @@
 build/
 cmake-cache/
+outputs/
 *.tr
 *.pcap
 *.dat
