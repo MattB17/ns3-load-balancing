@@ -8,7 +8,8 @@
 #
 # See test.py for more information.
 cpp_examples = [
-    ("small-scale-lb", "True", "True")
+    ("fat-tree-2-tier", "True", "True"),
+    ("flow-level-ecmp", "True", "True"),
 ]
 
 # A list of Python examples to run in order to ensure that they remain

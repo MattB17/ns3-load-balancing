@@ -146,6 +146,11 @@ int main(int argc, char* argv[]) {
     uint64_t spineToLeafCapacity = 40;
     uint64_t leafToServerCapacity = 10;
 
+    // Identifies whether to use a fixed request rate.
+    bool fixedRequestRate = false;
+    // Requests per second
+    double requestRate = 1.0; 
+
     CommandLine cmd;
     cmd.AddValue("startTime", "Start time of the simulation", START_TIME);
     cmd.AddValue("endTime", "End time of the simulation", END_TIME);
@@ -160,8 +165,11 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("linkCount", "The number of parallel links between each leaf and spine pair", LEAF_COUNT);
 
     cmd.AddValue("linkLatency", "Link latency, should be in microseconds", linkLatency);
-    cmd.AddValue("spineToLeafCapacity", "Spine <-> Lead capacity in Gbps", spineToLeafCapacity);
+    cmd.AddValue("spineToLeafCapacity", "Spine <-> Leaf capacity in Gbps", spineToLeafCapacity);
     cmd.AddValue("leafToServerCapacity", "Leaf <-> Server capacity in Gbps", leafToServerCapacity);
+
+    cmd.AddValue("fixedRequestRate", "Identifies whether the request rate should be a fixed value or based on a calculation", fixedRequestRate);
+    cmd.AddValue("requestRate", "The request rate for flow generation (rate at which flows are generated)", requestRate);
 
     cmd.Parse(argc, argv);
 
@@ -243,7 +251,9 @@ int main(int argc, char* argv[]) {
     LoadCdf(cdfTable, cdfFileName.c_str());
 
     double cdfAvg = AvgCdf(cdfTable);
-    double requestRate = load * LEAF_SERVER_CAPACITY * SERVER_COUNT / oversubRatio / (8 * cdfAvg) / SERVER_COUNT;
+    if (!fixedRequestRate) {
+        requestRate = load * LEAF_SERVER_CAPACITY * SERVER_COUNT / oversubRatio / (8 * cdfAvg) / SERVER_COUNT;
+    }
     NS_LOG_INFO("CDF average: " << cdfAvg << ", average request rate: " << requestRate << " per second");
 
     if (randomSeed == 0) {

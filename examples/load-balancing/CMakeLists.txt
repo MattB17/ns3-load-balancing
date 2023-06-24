@@ -1,6 +1,6 @@
 build_example(
-  NAME small-scale-lb
-  SOURCE_FILES small-scale-lb.cc
+  NAME fat-tree-2-tier
+  SOURCE_FILES fat-tree-2-tier.cc
                cdf.cc
   HEADER_FILES cdf.h
   LIBRARIES_TO_LINK
