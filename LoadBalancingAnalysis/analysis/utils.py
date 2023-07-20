@@ -44,5 +44,5 @@ def get_completion_times(completion_times_file):
   with open(completion_times_file, "r") as fct_file:
   	fct_times = fct_file.readlines()
   	return np.array([
-  		re.findall('\d+', fct_line.strip().split()[1][1:])[0]
+  		float(re.findall('\d+\.\d+', fct_line.strip().split()[1][1:])[0])
   		for fct_line in fct_times])

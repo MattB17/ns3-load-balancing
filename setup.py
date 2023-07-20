@@ -7,7 +7,7 @@ current_dire = path.abspath(path.dirname(__file__))
 
 # The setup.
 setup(
-  name="Ns3LoadBalancing",
+  name="LoadBalancingAnalysis",
   version="0.1.0",
   description="Load Balancing Frameworks and Experiments in NS3",
   author="Matt Buckley",
