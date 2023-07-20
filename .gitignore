@@ -11,3 +11,5 @@ outputs/
 .editorconfig
 .lock-ns3_darwin_build
 *.flowmon
+*.egg-info
+__pycache__/

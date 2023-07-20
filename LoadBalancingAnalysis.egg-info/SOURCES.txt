@@ -1,7 +1,0 @@
-README.md
-setup.cfg
-setup.py
-LoadBalancingAnalysis.egg-info/PKG-INFO
-LoadBalancingAnalysis.egg-info/SOURCES.txt
-LoadBalancingAnalysis.egg-info/dependency_links.txt
-LoadBalancingAnalysis.egg-info/top_level.txt
