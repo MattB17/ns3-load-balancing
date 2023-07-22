@@ -457,7 +457,7 @@ module.  All of the generated files are valid C/C++ and will compile successfull
 out of the box.  ns3 configure must be run after creating new modules in order
 to integrate them into the ns-3 build system.
 
-The following directory structure is generated under the contrib directory:
+The following directory structure is generated under the src directory:
 <modname>
  |-- CMakeLists.txt
  |-- doc
@@ -483,7 +483,7 @@ or contrib/ may be added to the front of the module name to indicate where the
 module scaffold should be created.  If the module name starts with src/, then
 the module is placed in the src directory.  If the module name starts with
 contrib/, then the module is placed in the contrib directory.  If the module
-name does not start with src/ or contrib/, then it defaults to contrib/.
+name does not start with src/ or contrib/, then it defaults to src/.
 See the examples section for use cases.
 
 
@@ -492,36 +492,36 @@ directory.  Use the --project option to specify a common parent directory where
 the modules should be generated.  The value passed to --project is treated
 as a relative path.  The path components have the same naming requirements as
 the module name: letters, numbers, -, _
-The project directory is placed under the contrib directory and any parts of the
-path that do not exist will be created.  Creating projects in the src directory
-is not supported.  Module names that start with src/ are not allowed when
---project is used.  Module names that start with contrib/ are treated the same
-as module names that don't start with contrib/ and are generated under the
+The project directory is placed under the src directory and any parts of the
+path that do not exist will be created.  Creating projects in the contrib directory
+is not supported.  Module names that start with contrib/ are not allowed when
+--project is used.  Module names that start with src/ are treated the same
+as module names that don't start with src/ and are generated under the
 project directory.
 """
 
     epilog = """Examples:
-  %(prog)s module1
   %(prog)s contrib/module1
 
       Creates a new module named module1 under the contrib directory
 
+  %(prog)s module1
   %(prog)s src/module1
 
       Creates a new module named module1 under the src directory
 
   %(prog)s src/module1 contrib/module2, module3
 
-      Creates three modules, one under the src directory and two under the
+      Creates three modules, two under the src directory and one under the
       contrib directory
 
   %(prog)s --project myproject module1 module2
 
-      Creates two modules under contrib/myproject
+      Creates two modules under src/myproject
 
   %(prog)s --project myproject/sub_project module1 module2
 
-      Creates two modules under contrib/myproject/sub_project
+      Creates two modules under src/myproject/sub_project
 
 """
 
@@ -532,14 +532,14 @@ project directory.
                                      formatter_class=formatter)
 
     parser.add_argument('--project', default='',
-                        help=("Specify a relative path under the contrib directory "
+                        help=("Specify a relative path under the src directory "
                             "where the new modules will be generated. The path "
                             "will be created if it does not exist."))
 
     parser.add_argument('modnames', nargs='+',
                         help=("One or more modules to generate.  Module names "
                             "are limited to the following: letters, numbers, -, "
-                            "_. Modules are generated under the contrib directory "
+                            "_. Modules are generated under the src directory "
                             "except when the module name starts with src/. Modules "
                             "that start with src/ are generated under the src "
                             "directory."))
@@ -604,8 +604,8 @@ def main(argv):
             print("Skipping {}: module name can not be a path".format(name))
             continue
 
-        #default target directory is contrib
-        modpath = contrib_path
+        #default target directory is src
+        modpath = src_path
 
         if name_path.parts[0] == 'src':
             if project:
@@ -624,8 +624,8 @@ def main(argv):
 
         if project_path:
             #if a project path was specified, that overrides other paths
-            #project paths are always relative to the contrib path
-            modpath = contrib_path.joinpath(project_path)
+            #project paths are always relative to the src path
+            modpath = src_path.joinpath(project_path)
 
         modname = name_path.parts[0]
 
