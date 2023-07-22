@@ -273,9 +273,9 @@ int main(int argc, char* argv[]) {
             FLOW_LAUNCH_END_TIME);
     }
 
-    AsciiTraceHelper ascii;
-    p2pLeafToSpine.EnableAsciiAll(ascii.CreateFileStream("outputs/fat-tree-2-tier.tr"));
-    p2pLeafToSpine.EnablePcapAll("outputs/fat-tree-2-tier");
+    // AsciiTraceHelper ascii;
+    // p2pLeafToSpine.EnableAsciiAll(ascii.CreateFileStream("outputs/fat-tree-2-tier.tr"));
+    // p2pLeafToSpine.EnablePcapAll("outputs/fat-tree-2-tier");
 
     FlowMonitorHelper flowmonHelper;
     flowmonHelper.InstallAll();

@@ -1,9 +1,0 @@
-README.md
-setup.cfg
-setup.py
-Ns3LoadBalancing.egg-info/PKG-INFO
-Ns3LoadBalancing.egg-info/SOURCES.txt
-Ns3LoadBalancing.egg-info/dependency_links.txt
-Ns3LoadBalancing.egg-info/top_level.txt
-analysis/__init__.py
-analysis/utils.py
