@@ -1,5 +1,5 @@
 #include "ns3/core-module.h"
-#include "ns3/drb-routing-helper.h"
+#include "ns3/ipv4-drb-routing-helper.h"
 
 /**
  * \file

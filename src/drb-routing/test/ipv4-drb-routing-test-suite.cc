@@ -1,6 +1,6 @@
 
 // Include a header file from your module to test.
-#include "ns3/drb-routing.h"
+#include "ns3/ipv4-drb-routing.h"
 
 // An essential include is test.h
 #include "ns3/test.h"
