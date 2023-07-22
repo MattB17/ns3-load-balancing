@@ -5,7 +5,7 @@
 #include "ns3/channel.h"
 #include "ns3/node.h"
 #include "ns3/flow-id-tag.h"
-//#include "ns3/ipv4-xpath-tag.h"
+#include "ns3/ipv4-xpath-tag.h"
 #include "ns3/uinteger.h"
 
 namespace ns3
@@ -13,12 +13,27 @@ namespace ns3
 
 NS_LOG_COMPONENT_DEFINE("Ipv4DrbRouting");
 
+NS_OBJECT_ENSURE_REGISTERED(Ipv4DrbRouting);
+
 Ipv4DrbRouting::Ipv4DrbRouting() : m_mode(PER_FLOW) {
 	NS_LOG_FUNCTION(this);
 }
 
 Ipv4DrbRouting::~Ipv4DrbRouting() {
 	NS_LOG_FUNCTION(this);
+}
+
+TypeId Ipv4DrbRouting::GetTypeId() {
+	static TypeId tid = TypeId("ns3::Ipv4DrbRouting")
+	    .SetParent<Object>()
+	    .SetGroupName("DRBRouting")
+	    .AddConstructor<Ipv4DrbRouting>()
+	    .AddAttribute("Mode", "DRB Mode: 0 for PER DEST, 1 for PER FLOW",
+	    	          UintegerValue(1),
+	    	          MakeUintegerAccessor(&Ipv4DrbRouting::m_mode),
+	    	          MakeUintegerChecker<uint32_t>());
+
+	return tid;
 }
 
 bool Ipv4DrbRouting::AddPath(uint32_t path) {
@@ -152,9 +167,9 @@ Ptr<Ipv4Route> Ipv4DrbRouting::RouteOutput(
 
     // DRB doesn't actually do the sending, just tags the packet with the
     // path.
- 	//Ipv4XPathTag ipv4XPathTag;
- 	//ipv4XPathTag.SetPathId(path)
- 	//p->AddPacketTag(ipv4XPathTag);
+ 	Ipv4XPathTag ipv4XPathTag;
+ 	ipv4XPathTag.SetPathId(path);
+ 	p->AddPacketTag(ipv4XPathTag);
 
  	NS_LOG_LOGIC("DRB Routing has assigned path: " << path);
 

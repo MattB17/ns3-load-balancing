@@ -32,6 +32,7 @@ public:
     Ipv4DrbRouting();
     ~Ipv4DrbRouting();
 
+    static TypeId GetTypeId();
     bool AddPath(uint32_t path);
     bool AddPath(uint32_t weight, uint32_t path);
 
