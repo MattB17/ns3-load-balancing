@@ -119,7 +119,8 @@ InternetStackHelper::InternetStackHelper()
       m_ipv4Enabled(true),
       m_ipv6Enabled(true),
       m_ipv4ArpJitterEnabled(true),
-      m_ipv6NsRsJitterEnabled(true)
+      m_ipv6NsRsJitterEnabled(true),
+      m_drb(false)
 
 {
     Initialize();
@@ -180,6 +181,7 @@ InternetStackHelper::Reset()
     m_ipv6Enabled = true;
     m_ipv4ArpJitterEnabled = true;
     m_ipv6NsRsJitterEnabled = true;
+    m_drb = false;
     Initialize();
 }
 
@@ -195,6 +197,10 @@ InternetStackHelper::SetRoutingHelper(const Ipv6RoutingHelper& routing)
 {
     delete m_routingv6;
     m_routingv6 = routing.Copy();
+}
+
+void InternetStackHelper::SetDrb() {
+    m_drb = true;
 }
 
 void

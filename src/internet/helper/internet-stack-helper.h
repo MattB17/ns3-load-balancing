@@ -177,6 +177,13 @@ class InternetStackHelper : public PcapHelperForIpv4,
     void InstallAll() const;
 
     /**
+     * \brief set the DRB routing mechanism.
+     * 
+     * This function ensures that DRB is used as part of the routing protocol.
+     */
+    void SetDrb();
+
+    /**
      * \brief set the Tcp stack which will not need any other parameter.
      *
      * This function sets up the tcp stack to the given TypeId. It should not be
@@ -359,6 +366,11 @@ class InternetStackHelper : public PcapHelperForIpv4,
      * \brief IPv6 IPv6 NS and RS Jitter state (enabled/disabled) ?
      */
     bool m_ipv6NsRsJitterEnabled;
+
+    /**
+     * \brief Whether DRB routing is enabled.
+     */
+    bool m_drb;
 };
 
 } // namespace ns3

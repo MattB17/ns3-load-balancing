@@ -29,6 +29,8 @@ set(source_files
     model/icmpv6-l4-protocol.cc
     model/ip-l4-protocol.cc
     model/ipv4-address-generator.cc
+    model/ipv4-drb-tag.cc
+    model/ipv4-drb.cc
     model/ipv4-end-point-demux.cc
     model/ipv4-end-point.cc
     model/ipv4-global-routing.cc
@@ -161,6 +163,8 @@ set(header_files
     model/icmpv6-l4-protocol.h
     model/ip-l4-protocol.h
     model/ipv4-address-generator.h
+    model/ipv4-drb-tag.h
+    model/ipv4-drb.h
     model/ipv4-end-point-demux.h
     model/ipv4-end-point.h
     model/ipv4-global-routing.h
