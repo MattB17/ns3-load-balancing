@@ -16,8 +16,10 @@
  *
  */
 
+#include "ipv4-drb-tag.h"
 #include "ipv4-list-routing.h"
 
+#include "ns3/flow-id-tag.h"
 #include "ns3/ipv4-route.h"
 #include "ns3/ipv4-static-routing.h"
 #include "ns3/ipv4.h"
@@ -42,7 +44,7 @@ Ipv4ListRouting::GetTypeId()
 }
 
 Ipv4ListRouting::Ipv4ListRouting()
-    : m_ipv4(nullptr)
+    : m_ipv4(nullptr), m_drb(nullptr)
 {
     NS_LOG_FUNCTION(this);
 }
@@ -67,6 +69,7 @@ Ipv4ListRouting::DoDispose()
     }
     m_routingProtocols.clear();
     m_ipv4 = nullptr;
+    m_drb = nullptr;
 }
 
 void
@@ -150,21 +153,61 @@ Ipv4ListRouting::RouteInput(Ptr<const Packet> p,
     NS_ASSERT(m_ipv4->GetInterfaceForDevice(idev) >= 0);
     uint32_t iif = m_ipv4->GetInterfaceForDevice(idev);
 
+    // DRB Support
+    // We need to query the DRB index to simulate IP-in-IP encapsulation.
+    Ptr<Packet> packet = p->Copy();
+    Ipv4Header ipHeader = header;
+
+    Ipv4DrbTag ipv4DrbTag;
+    bool foundDrb = packet->PeekPacketTag(ipv4DrbTag);
+
+    FlowIdTag flowIdTag;
+    bool foundFlowId = packet->PeekPacketTag(flowIdTag);
+
+    if (m_drb != nullptr && !foundDrb) {
+        NS_LOG_DEBUG("DRB is enabled, currently no DRB tag");
+        uint32_t flowId = 0;
+        if (foundFlowId) {
+            flowId = flowIdTag.GetFlowId();
+        } else {
+            NS_LOG_ERROR("Cannot find flow ID in DRB");
+        }
+
+        Ipv4Address addr = m_drb->GetCoreSwitchAddress(flowId);
+        // NULL check
+        if (addr != Ipv4Address()) {
+            Ipv4DrbTag ipv4DrbTag;
+            ipv4DrbTag.SetOriginalDstAddr(header.GetDestination());
+            ipHeader.SetDestination(addr);
+            packet->AddPacketTag(ipv4DrbTag);
+            NS_LOG_DEBUG(
+                "Forwarding the packet to the core switch: " << addr);
+        } else {
+            NS_LOG_ERROR("Core switch address is missing");
+        }
+    }
+
     retVal = m_ipv4->IsDestinationAddress(header.GetDestination(), iif);
     if (retVal == true)
     {
-        NS_LOG_LOGIC("Address " << header.GetDestination() << " is a match for local delivery");
-        if (header.GetDestination().IsMulticast())
-        {
-            Ptr<Packet> packetCopy = p->Copy();
-            lcb(packetCopy, header, iif);
-            retVal = true;
-            // Fall through
-        }
-        else
-        {
-            lcb(p, header, iif);
-            return true;
+        // DRB support, extract the original address.
+        if (foundDrb && !m_ipv4->IsDestinationAddress(
+            ipv4DrbTag.GetOriginalDstAddr(), iif)) {
+            Ipv4Address originalDstAddr = ipv4DrbTag.GetOriginalDstAddr();
+            ipHeader.SetDestination(originalDstAddr);
+            NS_LOG_DEBUG("Received DRB packet, bouncing packet to: "
+                << originalDstAddr);
+        } else {
+            NS_LOG_LOGIC("Address " << header.GetDestination() << " is a match for local delivery");
+            if (header.GetDestination().IsMulticast()) {
+                Ptr<Packet> packetCopy = p->Copy();
+                lcb(packetCopy, header, iif);
+                retVal = true;
+                // Fall through
+            } else {
+                lcb(p, header, iif);
+                return true;
+            }
         }
     }
     // Check if input device supports IP forwarding
@@ -308,4 +351,12 @@ Ipv4ListRouting::Compare(const Ipv4RoutingProtocolEntry& a, const Ipv4RoutingPro
     return a.first > b.first;
 }
 
-} // namespace ns3
+void Ipv4ListRouting::SetDrb(Ptr<Ipv4Drb> drb) {
+    m_drb = drb;
+}
+
+Ptr<Ipv4Drb> Ipv4ListRouting::GetDrb() {
+    return m_drb;
+}
+
+}  // namespace ns3

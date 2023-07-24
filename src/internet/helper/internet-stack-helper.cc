@@ -27,6 +27,7 @@
 #include "ns3/core-config.h"
 #include "ns3/global-router-interface.h"
 #include "ns3/icmpv6-l4-protocol.h"
+#include "ns3/ipv4-drb-helper.h"
 #include "ns3/ipv4-global-routing-helper.h"
 #include "ns3/ipv4-global-routing.h"
 #include "ns3/ipv4-list-routing-helper.h"
@@ -327,6 +328,13 @@ InternetStackHelper::Install(Ptr<Node> node) const
         // Set routing
         Ptr<Ipv4> ipv4 = node->GetObject<Ipv4>();
         Ptr<Ipv4RoutingProtocol> ipv4Routing = m_routing->Create(node);
+
+        // DRB support.
+        if (m_drb && DynamicCast<Ipv4ListRouting>(ipv4Routing)) {
+            Ipv4DrbHelper drbHelper;
+            (DynamicCast<Ipv4ListRouting>(ipv4Routing))->SetDrb(drbHelper.Create(node));
+        }
+
         ipv4->SetRoutingProtocol(ipv4Routing);
     }
 

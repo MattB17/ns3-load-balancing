@@ -18,6 +18,7 @@
 #ifndef IPV4_LIST_ROUTING_H
 #define IPV4_LIST_ROUTING_H
 
+#include "ns3/ipv4-drb.h"
 #include "ns3/ipv4-routing-protocol.h"
 #include "ns3/nstime.h"
 #include "ns3/simulator.h"
@@ -100,6 +101,9 @@ class Ipv4ListRouting : public Ipv4RoutingProtocol
     void PrintRoutingTable(Ptr<OutputStreamWrapper> stream,
                            Time::Unit unit = Time::S) const override;
 
+    virtual void SetDrb(Ptr<Ipv4Drb> drb);
+    virtual Ptr<Ipv4Drb> GetDrb();
+
   protected:
     void DoDispose() override;
     void DoInitialize() override;
@@ -123,6 +127,8 @@ class Ipv4ListRouting : public Ipv4RoutingProtocol
      */
     static bool Compare(const Ipv4RoutingProtocolEntry& a, const Ipv4RoutingProtocolEntry& b);
     Ptr<Ipv4> m_ipv4; //!< Ipv4 this protocol is associated with.
+
+    Ptr<Ipv4Drb> m_drb;  //!< The DRB routing engine.
 };
 
 } // namespace ns3

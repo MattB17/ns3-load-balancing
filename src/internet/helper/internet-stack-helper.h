@@ -36,6 +36,7 @@ namespace ns3
 class Node;
 class Ipv4RoutingHelper;
 class Ipv6RoutingHelper;
+class Ipv4DrbHelper;
 
 /**
  * \defgroup internet Internet
