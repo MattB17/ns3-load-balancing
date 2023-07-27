@@ -72,7 +72,7 @@ class LetflowRoutingTestSuite : public TestSuite
 };
 
 LetflowRoutingTestSuite::LetflowRoutingTestSuite()
-    : TestSuite("letflow-routing", UNIT)
+    : TestSuite("ipv4-letflow-routing", UNIT)
 {
     // TestDuration for TestCase can be QUICK, EXTENSIVE or TAKES_FOREVER
     AddTestCase(new LetflowRoutingTestCase1, TestCase::QUICK);

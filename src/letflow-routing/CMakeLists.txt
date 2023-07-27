@@ -6,7 +6,7 @@ endif()
 set(examples_as_tests_sources)
 if(${ENABLE_EXAMPLES})
     set(examples_as_tests_sources
-        #test/letflow-routing-examples-test-suite.cc
+        #test/ipv4-letflow-routing-examples-test-suite.cc
         )
 endif()
 
@@ -27,7 +27,7 @@ build_lib(
     LIBRARIES_TO_LINK
       ${libcore}
       ${libinternet}
-    TEST_SOURCES test/letflow-routing-test-suite.cc
+    TEST_SOURCES test/ipv4-letflow-routing-test-suite.cc
                  ${examples_as_tests_sources}
 )
 

@@ -45,7 +45,7 @@ Ipv4LetFlowRoutingHelper::GetLetFlowRouting(Ptr<Ipv4> ipv4) const {
 		    }
 		}
 	}
-	return 0;
+	return nullptr;
 }
 
 }  // namespace ns3
