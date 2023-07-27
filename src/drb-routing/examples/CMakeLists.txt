@@ -5,6 +5,7 @@ build_lib_example(
       ${libapplications}
       ${libcore}
       ${libdrb-routing}
+      ${libflow-monitor}
       ${libinternet}
       ${libpoint-to-point}
 )

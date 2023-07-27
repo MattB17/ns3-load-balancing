@@ -1,5 +1,6 @@
 #include "ns3/applications-module.h"
 #include "ns3/core-module.h"
+#include "ns3/flow-monitor-helper.h"
 #include "ns3/internet-module.h"
 #include "ns3/ipv4-drb-helper.h"
 #include "ns3/ipv4-global-routing-helper.h"
@@ -32,7 +33,12 @@ NS_LOG_COMPONENT_DEFINE("DrbRouterExample");
 int
 main(int argc, char* argv[])
 {
+    bool tracing = false;
+
     CommandLine cmd;
+
+    cmd.AddValue("tracing", "Whether or not tracing is enabled", tracing);
+
     cmd.Parse(argc, argv);
 
     Ptr<Node> nA = CreateObject<Node>();
@@ -290,7 +296,22 @@ main(int argc, char* argv[])
     apps.Start(Seconds(1.0));
     apps.Stop(Seconds(10.0));
 
-    Simulator::Run();
+    if (tracing) {
+        AsciiTraceHelper ascii;
+        p2p.EnableAsciiAll(ascii.CreateFileStream("outputs/drb-example/trace.tr"));
+        p2p.EnablePcapAll("outputs/drb-example/switch");
+
+        FlowMonitorHelper flowmonHelper;
+        flowmonHelper.InstallAll();
+
+        Simulator::Run();
+
+        flowmonHelper.SerializeToXmlFile(
+            "outputs/drb-example/monitoring.flowmon", true, true);
+    } else {
+        Simulator::Run();
+    }
+
     Simulator::Destroy();
 
     return 0;
