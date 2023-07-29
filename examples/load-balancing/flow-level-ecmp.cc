@@ -99,10 +99,12 @@ int main(int argc, char* argv[]) {
     Config::SetDefault("ns3::OnOffApplication::DataRate", StringValue("500kb/s"));
 
     // Setup ECMP routing.
-    Config::SetDefault("ns3::Ipv4GlobalRouting::RandomEcmpRouting", BooleanValue(true));
+    Config::SetDefault(
+        "ns3::Ipv4GlobalRouting::FlowLevelEcmpRouting", BooleanValue(true));
 
     uint32_t numNodesInCenter = 3;
     size_t numSmallFlows = 15;
+    bool verbose = false;
 
     CommandLine cmd;
     cmd.AddValue("numNodesInCenter", 
@@ -111,7 +113,14 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("numSmallFlows",
                  "number of small flows to start in the simulation",
                  numSmallFlows);
+    cmd.AddValue("verbose",
+                 "Controls whether logging is enabled",
+                 verbose);
     cmd.Parse(argc, argv);
+
+    if (verbose) {
+        LogComponentEnable("Ipv4GlobalRouting", LOG_LEVEL_LOGIC);
+    }
 
     // Create the nodes and link them together.
     NodeContainer n;

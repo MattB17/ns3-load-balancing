@@ -20,6 +20,7 @@
 #include "global-route-manager.h"
 
 #include "ns3/boolean.h"
+#include "ns3/flow-id-tag.h"
 #include "ns3/ipv4-route.h"
 #include "ns3/ipv4-routing-table-entry.h"
 #include "ns3/log.h"
@@ -53,6 +54,11 @@ Ipv4GlobalRouting::GetTypeId()
                           BooleanValue(false),
                           MakeBooleanAccessor(&Ipv4GlobalRouting::m_randomEcmpRouting),
                           MakeBooleanChecker())
+            .AddAttribute("FlowLevelEcmpRouting",
+                          "Set to true if flows are randomly routed among ECMP",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&Ipv4GlobalRouting::m_flowLevelEcmpRouting),
+                          MakeBooleanChecker())
             .AddAttribute("RespondToInterfaceEvents",
                           "Set to true if you want to dynamically recompute the global routes upon "
                           "Interface notification events (up/down, or add/remove address)",
@@ -64,6 +70,7 @@ Ipv4GlobalRouting::GetTypeId()
 
 Ipv4GlobalRouting::Ipv4GlobalRouting()
     : m_randomEcmpRouting(false),
+      m_flowLevelEcmpRouting(false),
       m_respondToInterfaceEvents(false)
 {
     NS_LOG_FUNCTION(this);
@@ -128,7 +135,8 @@ Ipv4GlobalRouting::AddASExternalRouteTo(Ipv4Address network,
 }
 
 Ptr<Ipv4Route>
-Ipv4GlobalRouting::LookupGlobal(Ipv4Address dest, Ptr<NetDevice> oif)
+Ipv4GlobalRouting::LookupGlobal(Ipv4Address dest, const Ipv4Header& header,
+                                uint32_t flowId, Ptr<NetDevice> oif)
 {
     NS_LOG_FUNCTION(this << dest << oif);
     NS_LOG_LOGIC("Looking for route for destination " << dest);
@@ -209,6 +217,19 @@ Ipv4GlobalRouting::LookupGlobal(Ipv4Address dest, Ptr<NetDevice> oif)
         {
             selectIndex = m_rand->GetInteger(0, allRoutes.size() - 1);
         }
+        // If the flow ID is 0, it may be the socket setup endpoint request,
+        // we simply return the first available route to indicate that the
+        // address is not local.
+        else if (m_flowLevelEcmpRouting && flowId != 0)
+        {
+            std::stringstream hash_string;
+            hash_string << flowId;
+            hash_string << header.GetTtl();
+            uint32_t hashedVal = Hash32(hash_string.str());
+            selectIndex = hashedVal % allRoutes.size();
+            NS_LOG_LOGIC("Per flow ECMP is enabled, selected index: "
+                << selectIndex << " for flow: " << flowId);
+        }
         else
         {
             selectIndex = 0;
@@ -228,6 +249,19 @@ Ipv4GlobalRouting::LookupGlobal(Ipv4Address dest, Ptr<NetDevice> oif)
     {
         return nullptr;
     }
+}
+
+uint32_t Ipv4GlobalRouting::ExtractFlowId(Ptr<Packet> p) {
+    uint32_t flowId = 0;
+    if (m_flowLevelEcmpRouting && p != nullptr) {
+        NS_ASSERT(m_randomEcmpRouting == false);
+        FlowIdTag flowIdTag;
+        bool found = p->PeekPacketTag(flowIdTag);
+        if (found) {
+            flowId = flowIdTag.GetFlowId();
+        }
+    }
+    return flowId;
 }
 
 uint32_t
@@ -444,6 +478,9 @@ Ipv4GlobalRouting::RouteOutput(Ptr<Packet> p,
                                Socket::SocketErrno& sockerr)
 {
     NS_LOG_FUNCTION(this << p << &header << oif << &sockerr);
+    // Recover the flow ID for ECMP flow level routing.
+    uint32_t flowId = ExtractFlowId(p);
+
     //
     // First, see if this is a multicast packet we have a route for.  If we
     // have a route, then send the packet down each of the specified interfaces.
@@ -457,7 +494,7 @@ Ipv4GlobalRouting::RouteOutput(Ptr<Packet> p,
     // See if this is a unicast packet we have a route for.
     //
     NS_LOG_LOGIC("Unicast destination- looking up");
-    Ptr<Ipv4Route> rtentry = LookupGlobal(header.GetDestination(), oif);
+    Ptr<Ipv4Route> rtentry = LookupGlobal(header.GetDestination(), header, flowId, oif);
     if (rtentry)
     {
         sockerr = Socket::ERROR_NOTERROR;
@@ -483,6 +520,9 @@ Ipv4GlobalRouting::RouteInput(Ptr<const Packet> p,
     // Check if input device supports IP
     NS_ASSERT(m_ipv4->GetInterfaceForDevice(idev) >= 0);
     uint32_t iif = m_ipv4->GetInterfaceForDevice(idev);
+
+    // Recover the flow ID for ECMP flow level routing.
+    uint32_t flowId = ExtractFlowId(ConstCast<Packet>(p));
 
     if (m_ipv4->IsDestinationAddress(header.GetDestination(), iif))
     {
@@ -512,7 +552,7 @@ Ipv4GlobalRouting::RouteInput(Ptr<const Packet> p,
     }
     // Next, try to find a route
     NS_LOG_LOGIC("Unicast destination- looking up global route");
-    Ptr<Ipv4Route> rtentry = LookupGlobal(header.GetDestination());
+    Ptr<Ipv4Route> rtentry = LookupGlobal(header.GetDestination(), header, flowId);
     if (rtentry)
     {
         NS_LOG_LOGIC("Found unicast destination- calling unicast callback");
