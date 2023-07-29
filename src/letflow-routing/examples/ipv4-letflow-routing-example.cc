@@ -7,6 +7,8 @@
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
 
+#include <iostream>
+
 /**
  * \file ipv4-let-flow-routing-example
  *
@@ -32,6 +34,7 @@ using namespace ns3;
 int
 main(int argc, char* argv[])
 {
+    bool verbose = true;
     bool tracing = false;
 
     uint16_t sendRate = 6000;
@@ -40,6 +43,7 @@ main(int argc, char* argv[])
 
     CommandLine cmd;
     
+    cmd.AddValue("verbose", "Tell LetFlowRouting to log if true", verbose);
     cmd.AddValue("tracing", "Whether or not tracing is enabled", tracing);
     cmd.AddValue(
         "sendRate",
@@ -49,6 +53,10 @@ main(int argc, char* argv[])
         "endTime", "The time when the application stops sending", endTime);
 
     cmd.Parse(argc, argv);
+
+    if (verbose) {
+        LogComponentEnable("Ipv4LetFlowRouting", LOG_LEVEL_LOGIC);
+    }
 
     Ptr<Node> nA = CreateObject<Node>();
     Ptr<Node> nB = CreateObject<Node>();
@@ -67,9 +75,17 @@ main(int argc, char* argv[])
     NodeContainer allNodes(nA, nB, nC, nD, nE, nF);
 
     Ipv4LetFlowRoutingHelper letflowRouting;
+    Ipv4StaticRoutingHelper staticRouting;
+    Ipv4GlobalRoutingHelper globalRouting;
+
+    // list routing, letflow has the highest priority and is consulted first.
+    Ipv4ListRoutingHelper listRouting;
+    listRouting.Add(letflowRouting, 10);
+    listRouting.Add(staticRouting, 0);
+    listRouting.Add(globalRouting, -10);
 
     InternetStackHelper internet;
-    internet.SetRoutingHelper(letflowRouting);
+    internet.SetRoutingHelper(listRouting);
     internet.Install(allNodes);
 
     // Create the peer-to-peer links with data rates 5Mbps and delay of 2ms.
@@ -132,17 +148,9 @@ main(int argc, char* argv[])
         AsciiTraceHelper ascii;
         p2p.EnableAsciiAll(ascii.CreateFileStream("outputs/letflow-example/trace.tr"));
         p2p.EnablePcapAll("outputs/letflow-example/switch");
-
-        FlowMonitorHelper flowmonHelper;
-        flowmonHelper.InstallAll();
-
-        Simulator::Run();
-
-        flowmonHelper.SerializeToXmlFile(
-            "outputs/letflow-example/monitoring.flowmon", true, true);
-    } else {
-        Simulator::Run();
     }
+
+    Simulator::Run();
 
     Simulator::Destroy();
 

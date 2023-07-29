@@ -191,7 +191,7 @@ Ipv4ListRouting::RouteInput(Ptr<const Packet> p,
     if (retVal == true)
     {
         // DRB support, extract the original address.
-        if (foundDrb && !m_ipv4->IsDestinationAddress(
+        if (m_drb != nullptr && foundDrb && !m_ipv4->IsDestinationAddress(
             ipv4DrbTag.GetOriginalDstAddr(), iif)) {
             Ipv4Address originalDstAddr = ipv4DrbTag.GetOriginalDstAddr();
             ipHeader.SetDestination(originalDstAddr);

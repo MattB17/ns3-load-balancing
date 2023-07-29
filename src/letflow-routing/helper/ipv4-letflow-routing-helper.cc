@@ -18,8 +18,8 @@ Ipv4LetFlowRoutingHelper* Ipv4LetFlowRoutingHelper::Copy(void) const {
 
 Ptr<Ipv4RoutingProtocol>
 Ipv4LetFlowRoutingHelper::Create(Ptr<Node> node) const {
-	Ptr<Ipv4LetFlowRouting> letFlowRouting = CreateObject<Ipv4LetFlowRouting>();
-	return letFlowRouting;
+	NS_LOG_LOGIC("Adding LetFlowRouting interface");
+	return CreateObject<Ipv4LetFlowRouting>();
 }
 
 Ptr<Ipv4LetFlowRouting>

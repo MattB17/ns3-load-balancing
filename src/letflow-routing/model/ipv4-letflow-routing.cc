@@ -120,6 +120,7 @@ bool Ipv4LetFlowRouting::RouteInput(
 	    LetFlowFlowlet flowlet = flowletItr->second;
 	    // If the interpacket gap is less than the flowlet timeout.
 	    if (now - flowlet.activeTime <= m_flowletTimeout) {
+	    	NS_LOG_LOGIC(this << " Found active flowlet for " << flowId);
 	    	// Update the flowlet last active time and get the port.
 	    	flowlet.activeTime = now;
 	    	selectedPort = flowlet.port;
@@ -138,6 +139,7 @@ bool Ipv4LetFlowRouting::RouteInput(
 
 	// Otherwise no flowlet entry was found or it timed out.
 	// So select a random port among the known routes to the destination.
+	NS_LOG_LOGIC(this << " Creating new flowlet for " << flowId);
 	selectedPort = routeEntries[rand() % routeEntries.size()].port;
 
 	// Construct the flowlet and route.
