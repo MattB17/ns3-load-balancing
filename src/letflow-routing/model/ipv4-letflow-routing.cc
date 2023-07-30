@@ -1,12 +1,16 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 #include "ipv4-letflow-routing.h"
 
-#include "ns3/log.h"
-#include "ns3/simulator.h"
-#include "ns3/net-device.h"
 #include "ns3/channel.h"
-#include "ns3/node.h"
 #include "ns3/flow-id-tag.h"
+#include "ns3/ipv4-route.h"
+#include "ns3/ipv4-routing-table-entry.h"
+#include "ns3/log.h"
+#include "ns3/net-device.h"
+#include "ns3/node.h"
+#include "ns3/object.h"
+#include "ns3/packet.h"
+#include "ns3/simulator.h"
 
 #include <algorithm>
 
@@ -15,6 +19,14 @@ namespace ns3 {
 NS_LOG_COMPONENT_DEFINE("Ipv4LetFlowRouting");
 
 NS_OBJECT_ENSURE_REGISTERED(Ipv4LetFlowRouting);
+
+TypeId Ipv4LetFlowRouting::GetTypeId(void) {
+	static TypeId tid = TypeId("ns3::Ipv4LetFlowRouting")
+	    .SetParent<Object>()
+	    .SetGroupName("Internet")
+	    .AddConstructor<Ipv4LetFlowRouting>();
+	return tid;
+}
 
 // Set the flowlet timeout to 50 microseconds.
 Ipv4LetFlowRouting::Ipv4LetFlowRouting(): m_flowletTimeout(MicroSeconds(50)),
@@ -26,12 +38,50 @@ Ipv4LetFlowRouting::~Ipv4LetFlowRouting() {
 	NS_LOG_FUNCTION(this);
 }
 
-TypeId Ipv4LetFlowRouting::GetTypeId(void) {
-	static TypeId tid = TypeId("ns3::Ipv4LetFlowRouting")
-	    .SetParent<Object>()
-	    .SetGroupName("Internet")
-	    .AddConstructor<Ipv4LetFlowRouting>();
-	return tid;
+void Ipv4LetFlowRouting::AddHostRouteTo(Ipv4Address dst,
+	                                    Ipv4Address nextHop,
+	                                    uint32_t interface) {
+	NS_LOG_FUNCTION(this << " " << dst << " " << nextHop << " " << interface);
+	Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
+	*route = Ipv4RoutingTableEntry::CreateHostRouteTo(dst, nextHop, interface);
+	m_hostRoutes.push_back(route);
+}
+
+void Ipv4LetFlowRouting::AddHostRouteTo(Ipv4Address dst, uint32_t interface) {
+	NS_LOG_FUNCTION(this << " " << dst << " " << interface);
+	Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
+	*route = Ipv4RoutingTableEntry::CreateHostRouteTo(dst, interface);
+	m_hostRoutes.push_back(route);
+}
+
+void Ipv4LetFlowRouting::AddNetworkRouteTo(Ipv4Address network,
+	                                       Ipv4Mask networkMask,
+	                                       Ipv4Address nextHop,
+	                                       uint32_t interface) {
+	NS_LOG_FUNCTION(this << " " << network << " " << networkMask << " "
+		<< nextHop << " " << interface);
+	Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
+	*route = Ipv4RoutingTableEntry::CreateNetworkRouteTo(
+		network, networkMask, interface);
+	m_networkRoutes.push_back(route);
+}
+
+void Ipv4LetFlowRouting::AddNetworkRouteTo(Ipv4Address network,
+	                                       Ipv4Mask networkMask,
+	                                       uint32_t interface) {
+	NS_LOG_FUNCTION(
+		this << " " << network << " " << networkMask << " " << interface);
+	Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
+	*route = Ipv4RoutingTableEntry::CreateNetworkRouteTo(
+		network, networkMask, interface);
+	m_networkRoutes.push_back(route);
+}
+
+void Ipv4LetFlowRouting::AddASExternalRouteTo(Ipv4Address network,
+	                                          Ipv4Mask networkMask,
+	                                          Ipv4Address nextHop,
+	                                          uint32_t interface) {
+	NS_LOG_FUNCTION("LetFlow routing does not support external routes");
 }
 
 void Ipv4LetFlowRouting::AddRoute(Ipv4Address network, Ipv4Mask networkMask,

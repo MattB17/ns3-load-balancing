@@ -2,12 +2,14 @@
 #ifndef IPV4_LETFLOW_ROUTING_H
 #define IPV4_LETFLOW_ROUTING_H
 
+#include "ns3/ipv4-address.h"
 #include "ns3/ipv4-global-routing.h"
+#include "ns3/ipv4-header.h"
 #include "ns3/ipv4-routing-protocol.h"
 #include "ns3/ipv4-route.h"
 #include "ns3/object.h"
 #include "ns3/packet.h"
-#include "ns3/ipv4-header.h"
+#include "ns3/node.h"
 #include "ns3/data-rate.h"
 #include "ns3/nstime.h"
 #include "ns3/event-id.h"
@@ -51,6 +53,61 @@ public:
 	virtual void SetIpv4(Ptr<Ipv4> ipv4);
 	virtual void PrintRoutingTable(Ptr<OutputStreamWrapper> stream,
 		                           Time::Unit unit = Time::S) const;
+
+    /**
+     * \brief Add a host route to the routing table.
+     * 
+     * \param dst The Ipv4Address representing the destination for this route.
+     * \param nextHop The Ipv4Address of the next hop in the route.
+     * \param interface The network interface index used to send packets to
+     *        the destination (a.k.a. the port).
+     */
+	void AddHostRouteTo(
+		Ipv4Address dst, Ipv4Address nextHop, uint32_t interface);
+
+    /**
+     * \brief Add a host route to the routing table.
+     * 
+     * \param dst The Ipv4Address representing the destination for this route.
+     * \param interface The network interface index used to send packets to
+     *        the destination (a.k.a. the port).
+     */
+	void AddHostRouteTo(Ipv4Address dst, uint32_t interface);
+
+	/**
+	 * \brief Add a network route to the routing table.
+	 * 
+	 * \param network The Ipv4Address of the network for this route.
+	 * \param networkMask The Ipv4Mask to extract the network.
+	 * \param nextHop The next hop in the route to the destination network.
+	 * \param interface The network interface index used to send packets to
+	 *        the destination (a.k.a. the port).
+	 */
+	void AddNetworkRouteTo(Ipv4Address network, Ipv4Mask networkMask,
+		                   Ipv4Address nextHop, uint32_t interface);
+
+	/**
+	 * \brief Add a network route to the routing table.
+	 * 
+	 * \param network The Ipv4Address of the network for this route.
+	 * \param networkMask The Ipv4Mask to extract the network.
+	 * \param interface The network interface index used to send packets to
+	 *        the destination (a.k.a. the port).
+	 */
+	void AddNetworkRouteTo(
+		Ipv4Address network, Ipv4Mask networkMask, uint32_t interface);
+
+	/**
+	 * \brief Add an external route to the routing table.
+	 * 
+	 * \param network The Ipv4Address network for this route.
+	 * \param networkMask The Ipv4Mask to extract the network.
+	 * \param nextHop The next hop Ipv4Address.
+	 * \param interface The network interface index used to send packet to
+	 *        the destination (a.k.a. the port).
+	 */
+	void AddASExternalRouteTo(Ipv4Address network, Ipv4Mask networkMask,
+		                      Ipv4Address nextHop, uint32_t interface);
 
 	virtual void DoDispose(void);
 
