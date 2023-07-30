@@ -27,6 +27,7 @@ build_lib(
     LIBRARIES_TO_LINK
       ${libcore}
       ${libinternet}
+      ${libnetwork}
     TEST_SOURCES test/ipv4-letflow-routing-test-suite.cc
                  ${examples_as_tests_sources}
 )

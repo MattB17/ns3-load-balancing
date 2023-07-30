@@ -1,5 +1,7 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 #include "ipv4-letflow-routing-helper.h"
+#include "ns3/global-router-interface.h"
+#include "ns3/ipv4-global-routing.h"
 #include "ns3/log.h"
 
 namespace ns3 {
@@ -18,8 +20,16 @@ Ipv4LetFlowRoutingHelper* Ipv4LetFlowRoutingHelper::Copy(void) const {
 
 Ptr<Ipv4RoutingProtocol>
 Ipv4LetFlowRoutingHelper::Create(Ptr<Node> node) const {
-	NS_LOG_LOGIC("Adding LetFlowRouting interface");
-	return CreateObject<Ipv4LetFlowRouting>();
+	NS_LOG_LOGIC("Adding GlobalRouter interface to node " << node->GetId());
+	Ptr<GlobalRouter> globalRouter = CreateObject<GlobalRouter>();
+	node->AggregateObject(globalRouter);
+
+	NS_LOG_LOGIC("Adding LetFlowRouting interface " << node->GetId());
+	Ptr<Ipv4LetFlowRouting> letflowRouting =
+	  CreateObject<Ipv4LetFlowRouting>();
+	globalRouter->SetRoutingProtocol(letflowRouting);
+
+	return letflowRouting;
 }
 
 Ptr<Ipv4LetFlowRouting>

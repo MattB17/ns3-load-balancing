@@ -2,6 +2,7 @@
 #ifndef IPV4_LETFLOW_ROUTING_H
 #define IPV4_LETFLOW_ROUTING_H
 
+#include "ns3/ipv4-global-routing.h"
 #include "ns3/ipv4-routing-protocol.h"
 #include "ns3/ipv4-route.h"
 #include "ns3/object.h"
@@ -25,7 +26,7 @@ struct LetFlowRouteEntry {
 };
 
 // This LetFlow routing class is implemented in each switch.
-class Ipv4LetFlowRouting : public Ipv4RoutingProtocol {
+class Ipv4LetFlowRouting : public Ipv4GlobalRouting {
 public:
 	Ipv4LetFlowRouting();
 	~Ipv4LetFlowRouting();
@@ -69,6 +70,11 @@ private:
 	std::map<uint32_t, LetFlowFlowlet> m_flowletTable;
 
 	std::vector<LetFlowRouteEntry> m_routeEntryList;
+
+	// Routes to hosts.
+	std::vector<Ipv4RoutingTableEntry*> m_hostRoutes;
+	// Routes to networks.
+	std::vector<Ipv4RoutingTableEntry*> m_networkRoutes;
 };
 
 }  // namespace ns3
