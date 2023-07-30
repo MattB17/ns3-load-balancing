@@ -21,12 +21,6 @@ struct LetFlowFlowlet {
 	Time activeTime;
 };
 
-struct LetFlowRouteEntry {
-	Ipv4Address network;
-	Ipv4Mask networkMask;
-	uint32_t port;
-};
-
 // This LetFlow routing class is implemented in each switch.
 class Ipv4LetFlowRouting : public Ipv4GlobalRouting {
 public:
@@ -34,8 +28,6 @@ public:
 	~Ipv4LetFlowRouting();
 
 	static TypeId GetTypeId(void);
-
-	void AddRoute(Ipv4Address network, Ipv4Mask networkMask, uint32_t port);
 
 	// Inherited from Ipv4RoutingProtocol.
 	virtual Ptr<Ipv4Route> RouteOutput(
@@ -109,9 +101,26 @@ public:
 	void AddASExternalRouteTo(Ipv4Address network, Ipv4Mask networkMask,
 		                      Ipv4Address nextHop, uint32_t interface);
 
+	/**
+	 * \brief Get the number of individual unicast routes that have been
+	 * added to the routing table.
+	 */
+	uint32_t GetNRoutes() const;
+
 	virtual void DoDispose(void);
 
-	std::vector<LetFlowRouteEntry> LookupLetFlowRouteEntries(Ipv4Address dst);
+	/**
+	 * \brief Lookup in the LetFlow forwarding table for the destination.
+	 * 
+	 * \param dst The destination address.
+	 * \param oif output interface if any (put nullptr otherwise).
+	 * 
+	 * \return vector of Ipv4RoutingTableEntry objects for routes to the
+	 * destination
+	 */
+	std::vector<Ipv4RoutingTableEntry*> LookupLetFlowRoutes(
+		Ipv4Address dst, Ptr<NetDevice> oif = nullptr);
+	
 	Ptr<Ipv4Route> ConstructIpv4Route(uint32_t port, Ipv4Address dstAddress);
 
 	void SetFlowletTimeout(Time timeout);
@@ -125,8 +134,6 @@ private:
 
 	// Flowlet table.
 	std::map<uint32_t, LetFlowFlowlet> m_flowletTable;
-
-	std::vector<LetFlowRouteEntry> m_routeEntryList;
 
 	// Routes to hosts.
 	std::vector<Ipv4RoutingTableEntry*> m_hostRoutes;

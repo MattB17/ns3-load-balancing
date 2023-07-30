@@ -84,30 +84,42 @@ void Ipv4LetFlowRouting::AddASExternalRouteTo(Ipv4Address network,
 	NS_LOG_FUNCTION("LetFlow routing does not support external routes");
 }
 
-void Ipv4LetFlowRouting::AddRoute(Ipv4Address network, Ipv4Mask networkMask,
-	                              uint32_t port) {
-	NS_LOG_LOGIC(this << " Add LetFlow routing entry: " << network << "/"
-		<< networkMask << " would go through port: " << port);
-	LetFlowRouteEntry letFlowRouteEntry;
-	letFlowRouteEntry.network = network;
-	letFlowRouteEntry.networkMask = networkMask;
-	letFlowRouteEntry.port = port;
-	m_routeEntryList.push_back(letFlowRouteEntry);
-}
+Ptr<Ipv4Route> Ipv4LetFlowRouting::RouteOutput(Ptr<Packet> packet,
+	                                           const Ipv4Header& header,
+	                                           Ptr<NetDevice> oif,
+	                                           Socket::SocketErrno& sockerr) {
+	NS_LOG_FUNCTION(this << " " << packet << " " << &header << " " << oif
+		<< " " << &sockerr);
+	// Does not support multicast
+	if (header.GetDestination().IsMulticast()) {
+		NS_LOG_ERROR("LetFlow does not support multicast");
+		return nullptr;
+	}
 
-Ptr<Ipv4Route> Ipv4LetFlowRouting::RouteOutput(
-	Ptr<Packet> packet, const Ipv4Header& header, Ptr<NetDevice> oif,
-	Socket::SocketErrno& sockerr) {
-	NS_LOG_ERROR(
-		this << " LetFlow routing is not supported for local routing output");
-	return 0;
+    // See if this is a unicast packet we have a destination for.
+    NS_LOG_LOGIC("Unicast destination, looking up");
+    std::vector<Ipv4RoutingTableEntry*> routeEntries =
+        Ipv4LetFlowRouting::LookupLetFlowRoutes(header.GetDestination(), oif);
+    if (routeEntries.empty()) {
+    	sockerr = Socket::ERROR_NOROUTETOHOST;
+     	return nullptr;
+    }
+    // Otherwise we found a route.
+    sockerr = Socket::ERROR_NOTERROR;
+    uint32_t selectedPort = routeEntries[
+    	rand() % routeEntries.size()]->GetInterface();
+    return Ipv4LetFlowRouting::ConstructIpv4Route(
+    	selectedPort, header.GetDestination());
 }
 
 // Receive an input packet on input device `idev`.
-bool Ipv4LetFlowRouting::RouteInput(
-	Ptr<const Packet> p, const Ipv4Header& header, Ptr<const NetDevice> idev,
-	UnicastForwardCallback ucb, MulticastForwardCallback mcb,
-	LocalDeliverCallback lcb, ErrorCallback ecb) {
+bool Ipv4LetFlowRouting::RouteInput(Ptr<const Packet> p,
+	                                const Ipv4Header& header,
+	                                Ptr<const NetDevice> idev,
+	                                UnicastForwardCallback ucb,
+	                                MulticastForwardCallback mcb,
+	                                LocalDeliverCallback lcb,
+	                                ErrorCallback ecb) {
 	NS_LOG_LOGIC(this << " Route Input: " << p << " IP header: " << header);
 	NS_ASSERT(m_ipv4->GetInterfaceForDevice(idev) >= 0);
 
@@ -147,21 +159,11 @@ bool Ipv4LetFlowRouting::RouteInput(
 	// If the flow ID was found, extract it.
 	flowId = flowIdTag.GetFlowId();
 
-	// Getting the routing entries to the destination.
-	std::vector<LetFlowRouteEntry> routeEntries =
-	    Ipv4LetFlowRouting::LookupLetFlowRouteEntries(dstAddress);
-
-	// Return error if there are no routing entries to the destination.
-	if (routeEntries.empty()) {
-	    NS_LOG_ERROR(this << " LetFlow routing cannot find routing entry");
-	    ecb(packet, header, Socket::ERROR_NOROUTETOHOST);
-	    return false;
-	}
-
-	// Otherwise, there is a route so we need to decide through which port we
-	// should forward the packet.
+	// We need to select a port for the packet.
 	uint32_t selectedPort;
 
+    // We first examine the flowlet table to see if it is part of an active
+    // flowlet.
 	std::map<uint32_t, struct LetFlowFlowlet>::iterator flowletItr =
 	    m_flowletTable.find(flowId);
 	// If the flowlet table entry is valid, return the port.
@@ -187,10 +189,22 @@ bool Ipv4LetFlowRouting::RouteInput(
 	    }
 	}
 
-	// Otherwise no flowlet entry was found or it timed out.
-	// So select a random port among the known routes to the destination.
+	// Otherwise, the flowlet either timed out or we don't have a flowlet
+	// entry, so we get all known routes to the destination.
+	std::vector<Ipv4RoutingTableEntry*> routeEntries =
+	    Ipv4LetFlowRouting::LookupLetFlowRoutes(dstAddress);
+
+	// Return error if there are no routing entries to the destination.
+	if (routeEntries.empty()) {
+	    NS_LOG_ERROR(this << " LetFlow routing cannot find routing entry");
+	    ecb(packet, header, Socket::ERROR_NOROUTETOHOST);
+	    return false;
+	}
+
+	// Otherwise, there is a route so we need to decide through which port we
+	// should forward the packet.
 	NS_LOG_LOGIC(this << " Creating new flowlet for " << flowId);
-	selectedPort = routeEntries[rand() % routeEntries.size()].port;
+	selectedPort = routeEntries[rand() % routeEntries.size()]->GetInterface();
 
 	// Construct the flowlet and route.
 	LetFlowFlowlet flowlet;
@@ -230,22 +244,65 @@ void Ipv4LetFlowRouting::PrintRoutingTable(
 }
 
 void Ipv4LetFlowRouting::DoDispose(void) {
-	m_ipv4 = 0;
-	Ipv4RoutingProtocol::DoDispose();
+	NS_LOG_FUNCTION(this);
+	std::vector<Ipv4RoutingTableEntry*>::iterator i = m_hostRoutes.begin();
+	for (; i != m_hostRoutes.end(); i = m_hostRoutes.erase(i)) {
+		delete(*i);
+	}
+	std::vector<Ipv4RoutingTableEntry*>::iterator j = m_networkRoutes.begin();
+	for (; j != m_networkRoutes.end(); j = m_networkRoutes.erase(i)) {
+		delete(*i);
+	}
+	m_ipv4 = nullptr;
+	Ipv4GlobalRouting::DoDispose();
 }
 
-std::vector<LetFlowRouteEntry>
-Ipv4LetFlowRouting::LookupLetFlowRouteEntries(Ipv4Address dst) {
-	std::vector<LetFlowRouteEntry> letFlowRouteEntries;
-	std::vector<LetFlowRouteEntry>::iterator itr = m_routeEntryList.begin();
-	for (; itr != m_routeEntryList.end(); itr++) {
-		// If the network mask matches the destination add it to the flowlet
-		// entries.
-		if ((*itr).networkMask.IsMatch(dst, (*itr).network)) {
-			letFlowRouteEntries.push_back(*itr);
-		}
-	}
-	return letFlowRouteEntries;
+uint32_t Ipv4LetFlowRouting::GetNRoutes() const {
+	NS_LOG_FUNCTION(this);
+	uint32_t n = 0;
+	n += m_hostRoutes.size();
+	n += m_networkRoutes.size();
+	return n;
+}
+
+std::vector<Ipv4RoutingTableEntry*>
+Ipv4LetFlowRouting::LookupLetFlowRoutes(Ipv4Address dst, Ptr<NetDevice> oif) {
+	NS_LOG_FUNCTION(this << " " << dst << " " << oif);
+	NS_LOG_LOGIC("Looking for route to destination " << dst);
+	std::vector<Ipv4RoutingTableEntry*> letFlowRoutes;
+
+    // Add all host routes to destination.
+	NS_LOG_LOGIC("Number of host routes = " << m_hostRoutes.size());
+    std::vector<Ipv4RoutingTableEntry*>::const_iterator i;
+    for (i = m_hostRoutes.begin(); i != m_hostRoutes.end(); i++) {
+    	NS_ASSERT((*i)->IsHost());
+    	if ((*i)->GetDest() == dst) {
+    		if (oif && oif != m_ipv4->GetNetDevice((*i)->GetInterface())) {
+    			NS_LOG_LOGIC("Not on requested interface, skipping");
+    			continue;
+    		}
+    		letFlowRoutes.push_back(*i);
+    		NS_LOG_LOGIC(letFlowRoutes.size() << " Found host route " << *i);
+    	}
+    }
+
+    // Add all network routes to destination.
+    NS_LOG_LOGIC("Number of network routes " << m_networkRoutes.size());
+    std::vector<Ipv4RoutingTableEntry*>::const_iterator j;
+    for (j = m_networkRoutes.begin(); j != m_networkRoutes.end(); j++) {
+    	Ipv4Mask mask = (*j)->GetDestNetworkMask();
+    	Ipv4Address entry = (*j)->GetDestNetwork();
+    	if (mask.IsMatch(dst, entry)) {
+    		if (oif && oif != m_ipv4->GetNetDevice((*i)->GetInterface())) {
+    			NS_LOG_LOGIC("Not on requested interface, skipping");
+    			continue;
+    		}
+    		letFlowRoutes.push_back(*i);
+    		NS_LOG_LOGIC(
+    			letFlowRoutes.size() << "Found network route " << *i);
+    	}
+    }
+    return letFlowRoutes;
 }
 
 Ptr<Ipv4Route> Ipv4LetFlowRouting::ConstructIpv4Route(
