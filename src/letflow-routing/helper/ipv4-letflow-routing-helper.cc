@@ -34,8 +34,10 @@ Ipv4LetFlowRoutingHelper::Create(Ptr<Node> node) const {
 }
 
 void Ipv4LetFlowRoutingHelper::PopulateRoutingTables() {
+	std::cout << "Calling populate tables" << std::endl;
 	GlobalRouteManager::BuildGlobalRoutingDatabase();
 	GlobalRouteManager::InitializeRoutes();
+	std::cout << "Finished populating tables" << std::endl;
 }
 
 void Ipv4LetFlowRoutingHelper::RecomputeRoutingTables() {

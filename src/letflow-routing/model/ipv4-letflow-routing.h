@@ -27,24 +27,26 @@ public:
 	Ipv4LetFlowRouting();
 	~Ipv4LetFlowRouting();
 
-	static TypeId GetTypeId(void);
+	static TypeId GetTypeId();
 
 	// Inherited from Ipv4RoutingProtocol.
-	virtual Ptr<Ipv4Route> RouteOutput(
+	Ptr<Ipv4Route> RouteOutput(
 		Ptr<Packet> p, const Ipv4Header& header, Ptr<NetDevice> oif,
-		Socket::SocketErrno& sockerr);
-	virtual bool RouteInput(
+		Socket::SocketErrno& sockerr) override;
+	bool RouteInput(
 		Ptr<const Packet> p, const Ipv4Header& header,
 		Ptr<const NetDevice> idev, UnicastForwardCallback ucb,
 		MulticastForwardCallback mcb, LocalDeliverCallback lcb,
-		ErrorCallback ecb);
-	virtual void NotifyInterfaceUp(uint32_t interface);
-	virtual void NotifyInterfaceDown(uint32_t interface);
-	virtual void NotifyAddAddress(uint32_t interface, Ipv4InterfaceAddress address);
-	virtual void NotifyRemoveAddress(uint32_t interface, Ipv4InterfaceAddress address);
-	virtual void SetIpv4(Ptr<Ipv4> ipv4);
-	virtual void PrintRoutingTable(Ptr<OutputStreamWrapper> stream,
-		                           Time::Unit unit = Time::S) const;
+		ErrorCallback ecb) override;
+	void NotifyInterfaceUp(uint32_t interface) override;
+	void NotifyInterfaceDown(uint32_t interface) override;
+	void NotifyAddAddress(uint32_t interface,
+		                  Ipv4InterfaceAddress address) override;
+	void NotifyRemoveAddress(uint32_t interface,
+		                     Ipv4InterfaceAddress address) override;
+	void SetIpv4(Ptr<Ipv4> ipv4) override;
+	void PrintRoutingTable(Ptr<OutputStreamWrapper> stream,
+		                   Time::Unit unit = Time::S) const override;
 
     /**
      * \brief Add a host route to the routing table.
@@ -75,8 +77,10 @@ public:
 	 * \param interface The network interface index used to send packets to
 	 *        the destination (a.k.a. the port).
 	 */
-	void AddNetworkRouteTo(Ipv4Address network, Ipv4Mask networkMask,
-		                   Ipv4Address nextHop, uint32_t interface);
+	void AddNetworkRouteTo(Ipv4Address network,
+		                   Ipv4Mask networkMask,
+		                   Ipv4Address nextHop,
+		                   uint32_t interface);
 
 	/**
 	 * \brief Add a network route to the routing table.
@@ -86,8 +90,9 @@ public:
 	 * \param interface The network interface index used to send packets to
 	 *        the destination (a.k.a. the port).
 	 */
-	void AddNetworkRouteTo(
-		Ipv4Address network, Ipv4Mask networkMask, uint32_t interface);
+	void AddNetworkRouteTo(Ipv4Address network,
+		                   Ipv4Mask networkMask,
+		                   uint32_t interface);
 
 	/**
 	 * \brief Add an external route to the routing table.
@@ -98,8 +103,10 @@ public:
 	 * \param interface The network interface index used to send packet to
 	 *        the destination (a.k.a. the port).
 	 */
-	void AddASExternalRouteTo(Ipv4Address network, Ipv4Mask networkMask,
-		                      Ipv4Address nextHop, uint32_t interface);
+	void AddASExternalRouteTo(Ipv4Address network,
+		                      Ipv4Mask networkMask,
+		                      Ipv4Address nextHop,
+		                      uint32_t interface);
 
 	/**
 	 * \brief Get the number of individual unicast routes that have been
@@ -107,7 +114,17 @@ public:
 	 */
 	uint32_t GetNRoutes() const;
 
-	virtual void DoDispose(void);
+	/**
+	 * \brief Get a route from the unicast routing table.
+	 * 
+	 * \param i The index (into the routing table) of the route to retrieve.
+	 * 
+	 * \return If the route is set, a pointer to that Ipv4RoutingTableEntry
+	 * is returned, otherwise, nullptr is returned.
+	 */
+	Ipv4RoutingTableEntry* GetRoute(uint32_t i) const;
+
+	virtual void DoDispose(void) override;
 
 	/**
 	 * \brief Lookup in the LetFlow forwarding table for the destination.

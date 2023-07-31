@@ -75,17 +75,8 @@ main(int argc, char* argv[])
     NodeContainer allNodes(nA, nB, nC, nD, nE, nF);
 
     Ipv4LetFlowRoutingHelper letflowRouting;
-    Ipv4StaticRoutingHelper staticRouting;
-    Ipv4GlobalRoutingHelper globalRouting;
-
-    // list routing, letflow has the highest priority and is consulted first.
-    Ipv4ListRoutingHelper listRouting;
-    listRouting.Add(letflowRouting, 10);
-    listRouting.Add(staticRouting, 0);
-    listRouting.Add(globalRouting, -10);
-
     InternetStackHelper internet;
-    internet.SetRoutingHelper(listRouting);
+    internet.SetRoutingHelper(letflowRouting);
     internet.Install(allNodes);
 
     // Create the peer-to-peer links with data rates 5Mbps and delay of 2ms.
@@ -120,7 +111,7 @@ main(int argc, char* argv[])
     Ipv4InterfaceContainer iFiE = ipv4.Assign(dFdE);
 
     // Initialize routing database and set up the routing tables in the nodes.
-    Ipv4GlobalRoutingHelper::PopulateRoutingTables();
+    Ipv4LetFlowRoutingHelper::PopulateRoutingTables();
 
     // Create an OnOff application to send TCP datagrams at a data rate of
     // `sendRate` bps

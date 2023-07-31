@@ -6,6 +6,7 @@
 #include "ns3/ipv4-route.h"
 #include "ns3/ipv4-routing-table-entry.h"
 #include "ns3/log.h"
+#include "ns3/names.h"
 #include "ns3/net-device.h"
 #include "ns3/node.h"
 #include "ns3/object.h"
@@ -42,6 +43,7 @@ void Ipv4LetFlowRouting::AddHostRouteTo(Ipv4Address dst,
 	                                    Ipv4Address nextHop,
 	                                    uint32_t interface) {
 	NS_LOG_FUNCTION(this << " " << dst << " " << nextHop << " " << interface);
+	std::cout << "LetFlow: Adding host route" << std::endl;
 	Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
 	*route = Ipv4RoutingTableEntry::CreateHostRouteTo(dst, nextHop, interface);
 	m_hostRoutes.push_back(route);
@@ -49,6 +51,7 @@ void Ipv4LetFlowRouting::AddHostRouteTo(Ipv4Address dst,
 
 void Ipv4LetFlowRouting::AddHostRouteTo(Ipv4Address dst, uint32_t interface) {
 	NS_LOG_FUNCTION(this << " " << dst << " " << interface);
+	std::cout << "LetFlow: Adding host route" << std::endl;
 	Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
 	*route = Ipv4RoutingTableEntry::CreateHostRouteTo(dst, interface);
 	m_hostRoutes.push_back(route);
@@ -60,6 +63,7 @@ void Ipv4LetFlowRouting::AddNetworkRouteTo(Ipv4Address network,
 	                                       uint32_t interface) {
 	NS_LOG_FUNCTION(this << " " << network << " " << networkMask << " "
 		<< nextHop << " " << interface);
+	std::cout << "LetFlow: Adding network route" << std::endl;
 	Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
 	*route = Ipv4RoutingTableEntry::CreateNetworkRouteTo(
 		network, networkMask, interface);
@@ -71,6 +75,7 @@ void Ipv4LetFlowRouting::AddNetworkRouteTo(Ipv4Address network,
 	                                       uint32_t interface) {
 	NS_LOG_FUNCTION(
 		this << " " << network << " " << networkMask << " " << interface);
+	std::cout << "LetFlow: Adding network route" << std::endl;
 	Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
 	*route = Ipv4RoutingTableEntry::CreateNetworkRouteTo(
 		network, networkMask, interface);
@@ -82,6 +87,7 @@ void Ipv4LetFlowRouting::AddASExternalRouteTo(Ipv4Address network,
 	                                          Ipv4Address nextHop,
 	                                          uint32_t interface) {
 	NS_LOG_FUNCTION("LetFlow routing does not support external routes");
+	std::cout << "OH SHIT!" << std::endl;
 }
 
 Ptr<Ipv4Route> Ipv4LetFlowRouting::RouteOutput(Ptr<Packet> packet,
@@ -241,6 +247,70 @@ void Ipv4LetFlowRouting::SetIpv4(Ptr<Ipv4> ipv4) {
 
 void Ipv4LetFlowRouting::PrintRoutingTable(
 	Ptr<OutputStreamWrapper> stream, Time::Unit unit) const {
+	NS_LOG_FUNCTION(this << " " << stream);
+	std::ostream* os = stream->GetStream();
+	// Copy the current ostream state.
+	std::ios oldState(nullptr);
+	oldState.copyfmt(*os);
+
+	*os << std::resetiosflags(std::ios::adjustfield)
+	    << std::setiosflags(std::ios::left);
+
+	*os << "Node: " << m_ipv4->GetObject<Node>()->GetId() << ", Time: "
+        << Now().As(unit) << ", Local time: "
+        << m_ipv4->GetObject<Node>()->GetLocalTime().As(unit)
+        << ", Ipv4LetFlowRouting table" << std::endl;
+
+    uint32_t numRoutes = GetNRoutes();
+    if (numRoutes > 0) {
+    	*os << "Destination     Gateway         Genmask         Flags Metric Ref"
+    	    << "    Use Iface" << std::endl;
+    	for (uint32_t routeIdx = 0; routeIdx < numRoutes; routeIdx++) {
+    		std::ostringstream dst;
+    		std::ostringstream gtwy;
+    		std::ostringstream mask;
+    		std::ostringstream flags;
+    		Ipv4RoutingTableEntry* route = GetRoute(routeIdx);
+    		// The destination address with a width of 16 characters.
+    		dst << route->GetDest();
+    		*os << std::setw(16) << dst.str();
+    		// The gateway with a width of 16 characters.
+    		gtwy << route->GetGateway();
+    		*os << std::setw(16) << gtwy.str();
+    		// The destination network mask with a width of 16 characters.
+    		mask << route->GetDestNetworkMask();
+    		*os << std::setw(16) << mask.str();
+    		// flags with a width of 6 characters.
+    		flags << "U";
+    		if (route->IsHost()) {
+    			flags << "H";
+    		} else if (route->IsGateway()) {
+    			flags << "G";
+    		}
+    		*os << std::setw(6) << flags.str();
+    		// Metric not implemented.
+            *os << "-"
+                << "      ";
+            // Ref ct not implemented.
+            *os << "-"
+                << "      ";
+            // Use not implemented.
+            *os << "-"
+                << "   ";
+            // The interface.
+            if (!Names::FindName(
+            	m_ipv4->GetNetDevice(route->GetInterface())).empty()) {
+            	*os << Names::FindName(m_ipv4->GetNetDevice(
+            		route->GetInterface()));
+            } else {
+            	*os << route->GetInterface();
+            }
+            *os << std::endl;
+    	}
+    }
+    *os << std::endl;
+    // Restore the previous ostream state.
+    (*os).copyfmt(oldState);
 }
 
 void Ipv4LetFlowRouting::DoDispose(void) {
@@ -263,6 +333,32 @@ uint32_t Ipv4LetFlowRouting::GetNRoutes() const {
 	n += m_hostRoutes.size();
 	n += m_networkRoutes.size();
 	return n;
+}
+
+Ipv4RoutingTableEntry* Ipv4LetFlowRouting::GetRoute(uint32_t i) const {
+	NS_LOG_FUNCTION(this << " " << i);
+	uint32_t tmp = 0;
+	if (i < m_hostRoutes.size()) {
+		auto itr = m_hostRoutes.begin();
+		for (; itr != m_hostRoutes.end(); itr++) {
+			if (tmp == i) {
+				return *itr;
+			}
+			tmp++;
+		}
+	}
+	i -= m_hostRoutes.size();
+	tmp = 0;
+	if (i < m_networkRoutes.size()) {
+		auto itr = m_networkRoutes.begin();
+		for (; itr != m_networkRoutes.end(); itr++) {
+			if (tmp == i) {
+				return *itr;
+			}
+			tmp++;
+		}
+	}
+	return nullptr;
 }
 
 std::vector<Ipv4RoutingTableEntry*>
