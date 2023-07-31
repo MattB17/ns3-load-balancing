@@ -22,9 +22,9 @@ struct LetFlowFlowlet {
 };
 
 // This LetFlow routing class is implemented in each switch.
-class Ipv4LetFlowRouting : public Ipv4GlobalRouting {
+class Ipv4LetFlowRouting : public Ipv4RoutingProtocol {
 public:
-	Ipv4LetFlowRouting();
+	Ipv4LetFlowRouting(Ptr<Ipv4GlobalRouting> globalRouting);
 	~Ipv4LetFlowRouting();
 
 	static TypeId GetTypeId();
@@ -47,66 +47,6 @@ public:
 	void SetIpv4(Ptr<Ipv4> ipv4) override;
 	void PrintRoutingTable(Ptr<OutputStreamWrapper> stream,
 		                   Time::Unit unit = Time::S) const override;
-
-    /**
-     * \brief Add a host route to the routing table.
-     * 
-     * \param dst The Ipv4Address representing the destination for this route.
-     * \param nextHop The Ipv4Address of the next hop in the route.
-     * \param interface The network interface index used to send packets to
-     *        the destination (a.k.a. the port).
-     */
-	void AddHostRouteTo(
-		Ipv4Address dst, Ipv4Address nextHop, uint32_t interface);
-
-    /**
-     * \brief Add a host route to the routing table.
-     * 
-     * \param dst The Ipv4Address representing the destination for this route.
-     * \param interface The network interface index used to send packets to
-     *        the destination (a.k.a. the port).
-     */
-	void AddHostRouteTo(Ipv4Address dst, uint32_t interface);
-
-	/**
-	 * \brief Add a network route to the routing table.
-	 * 
-	 * \param network The Ipv4Address of the network for this route.
-	 * \param networkMask The Ipv4Mask to extract the network.
-	 * \param nextHop The next hop in the route to the destination network.
-	 * \param interface The network interface index used to send packets to
-	 *        the destination (a.k.a. the port).
-	 */
-	void AddNetworkRouteTo(Ipv4Address network,
-		                   Ipv4Mask networkMask,
-		                   Ipv4Address nextHop,
-		                   uint32_t interface);
-
-	/**
-	 * \brief Add a network route to the routing table.
-	 * 
-	 * \param network The Ipv4Address of the network for this route.
-	 * \param networkMask The Ipv4Mask to extract the network.
-	 * \param interface The network interface index used to send packets to
-	 *        the destination (a.k.a. the port).
-	 */
-	void AddNetworkRouteTo(Ipv4Address network,
-		                   Ipv4Mask networkMask,
-		                   uint32_t interface);
-
-	/**
-	 * \brief Add an external route to the routing table.
-	 * 
-	 * \param network The Ipv4Address network for this route.
-	 * \param networkMask The Ipv4Mask to extract the network.
-	 * \param nextHop The next hop Ipv4Address.
-	 * \param interface The network interface index used to send packet to
-	 *        the destination (a.k.a. the port).
-	 */
-	void AddASExternalRouteTo(Ipv4Address network,
-		                      Ipv4Mask networkMask,
-		                      Ipv4Address nextHop,
-		                      uint32_t interface);
 
 	/**
 	 * \brief Get the number of individual unicast routes that have been
@@ -152,10 +92,10 @@ private:
 	// Flowlet table.
 	std::map<uint32_t, LetFlowFlowlet> m_flowletTable;
 
-	// Routes to hosts.
-	std::vector<Ipv4RoutingTableEntry*> m_hostRoutes;
-	// Routes to networks.
-	std::vector<Ipv4RoutingTableEntry*> m_networkRoutes;
+	// A pointer to an Ipv4GlobalRouting object. LetFlow only changes routes
+	// to balance loads but we leverage the existing global routing
+	// capabilities to pre-install routes and maintain the routing table.
+	Ptr<Ipv4GlobalRouting> m_globalRouting;
 };
 
 }  // namespace ns3

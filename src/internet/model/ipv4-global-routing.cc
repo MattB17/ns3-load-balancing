@@ -139,6 +139,66 @@ Ipv4GlobalRouting::AddASExternalRouteTo(Ipv4Address network,
     m_ASexternalRoutes.push_back(route);
 }
 
+std::vector<Ipv4RoutingTableEntry*>
+Ipv4GlobalRouting::GetRoutesToDst(Ipv4Address dst, Ptr<NetDevice> oif) {
+    NS_LOG_FUNCTION(this << " " << dst << " " << oif);
+    NS_LOG_LOGIC("Looking for all routes to " << dst);
+    std::vector<Ipv4RoutingTableEntry*> dstRoutes;
+
+    NS_LOG_LOGIC("Number of host routes = " << m_hostRoutes.size());
+    HostRoutesCI i = m_hostRoutes.begin();
+    for (; i != m_hostRoutes.end(); i++) {
+        NS_ASSERT((*i)->IsHost());
+        if ((*i)->GetDest() == dst) {
+            if (oif && oif != m_ipv4->GetNetDevice((*i)->GetInterface())) {
+                NS_LOG_LOGIC("Not on requested interface, skipping");
+                continue;
+            }
+            dstRoutes.push_back(*i);
+            NS_LOG_LOGIC(
+                dstRoutes.size() << "Found global host route " << *i);
+        }
+    }
+    // No host route found.
+    if (dstRoutes.empty()) {
+        NS_LOG_LOGIC("Number of network routes " << m_networkRoutes.size());
+        NetworkRoutesI j = m_networkRoutes.begin();
+        for (; j != m_networkRoutes.end(); j++) {
+            Ipv4Mask mask = (*j)->GetDestNetworkMask();
+            Ipv4Address entry = (*j)->GetDestNetwork();
+            if (mask.IsMatch(dst, entry)) {
+                if (oif &&
+                    oif != m_ipv4->GetNetDevice((*j)->GetInterface())) {
+                    NS_LOG_LOGIC("Not on requested interface, skipping");
+                    continue;
+                }
+                dstRoutes.push_back(*j);
+                NS_LOG_LOGIC(
+                    dstRoutes.size() << "Found global network route " << *j);
+            }
+        }
+    }
+    // Consider external if no host/network route found.
+    if (dstRoutes.empty()) {
+        NS_LOG_LOGIC(
+            "Number of external routes " << m_ASexternalRoutes.size());
+        ASExternalRoutesI k = m_ASexternalRoutes.begin();
+        for (; k != m_ASexternalRoutes.end(); k++) {
+            Ipv4Mask mask = (*k)->GetDestNetworkMask();
+            Ipv4Address entry = (*k)->GetDestNetwork();
+            if (mask.IsMatch(dst, entry)) {
+                if (oif && oif != m_ipv4->GetNetDevice((*k)->GetInterface())) {
+                    NS_LOG_LOGIC("Not on requested interface, skipping");
+                    continue;
+                }
+                dstRoutes.push_back(*k);
+                break;
+            }
+        }
+    }
+    return dstRoutes;
+}
+
 Ptr<Ipv4Route>
 Ipv4GlobalRouting::LookupGlobal(Ipv4Address dest, const Ipv4Header& header,
                                 uint32_t flowId, Ptr<NetDevice> oif)
@@ -148,70 +208,8 @@ Ipv4GlobalRouting::LookupGlobal(Ipv4Address dest, const Ipv4Header& header,
     Ptr<Ipv4Route> rtentry = nullptr;
     // store all available routes that bring packets to their destination
     typedef std::vector<Ipv4RoutingTableEntry*> RouteVec_t;
-    RouteVec_t allRoutes;
+    RouteVec_t allRoutes = GetRoutesToDst(dest, oif);
 
-    NS_LOG_LOGIC("Number of m_hostRoutes = " << m_hostRoutes.size());
-    for (HostRoutesCI i = m_hostRoutes.begin(); i != m_hostRoutes.end(); i++)
-    {
-        NS_ASSERT((*i)->IsHost());
-        if ((*i)->GetDest() == dest)
-        {
-            if (oif)
-            {
-                if (oif != m_ipv4->GetNetDevice((*i)->GetInterface()))
-                {
-                    NS_LOG_LOGIC("Not on requested interface, skipping");
-                    continue;
-                }
-            }
-            allRoutes.push_back(*i);
-            NS_LOG_LOGIC(allRoutes.size() << "Found global host route" << *i);
-        }
-    }
-    if (allRoutes.empty()) // if no host route is found
-    {
-        NS_LOG_LOGIC("Number of m_networkRoutes" << m_networkRoutes.size());
-        for (NetworkRoutesI j = m_networkRoutes.begin(); j != m_networkRoutes.end(); j++)
-        {
-            Ipv4Mask mask = (*j)->GetDestNetworkMask();
-            Ipv4Address entry = (*j)->GetDestNetwork();
-            if (mask.IsMatch(dest, entry))
-            {
-                if (oif)
-                {
-                    if (oif != m_ipv4->GetNetDevice((*j)->GetInterface()))
-                    {
-                        NS_LOG_LOGIC("Not on requested interface, skipping");
-                        continue;
-                    }
-                }
-                allRoutes.push_back(*j);
-                NS_LOG_LOGIC(allRoutes.size() << "Found global network route" << *j);
-            }
-        }
-    }
-    if (allRoutes.empty()) // consider external if no host/network found
-    {
-        for (ASExternalRoutesI k = m_ASexternalRoutes.begin(); k != m_ASexternalRoutes.end(); k++)
-        {
-            Ipv4Mask mask = (*k)->GetDestNetworkMask();
-            Ipv4Address entry = (*k)->GetDestNetwork();
-            if (mask.IsMatch(dest, entry))
-            {
-                NS_LOG_LOGIC("Found external route" << *k);
-                if (oif)
-                {
-                    if (oif != m_ipv4->GetNetDevice((*k)->GetInterface()))
-                    {
-                        NS_LOG_LOGIC("Not on requested interface, skipping");
-                        continue;
-                    }
-                }
-                allRoutes.push_back(*k);
-                break;
-            }
-        }
-    }
     if (!allRoutes.empty()) // if route(s) is found
     {
         // pick up one of the routes uniformly at random if random

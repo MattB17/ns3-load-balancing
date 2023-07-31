@@ -24,70 +24,21 @@ NS_OBJECT_ENSURE_REGISTERED(Ipv4LetFlowRouting);
 TypeId Ipv4LetFlowRouting::GetTypeId(void) {
 	static TypeId tid = TypeId("ns3::Ipv4LetFlowRouting")
 	    .SetParent<Object>()
-	    .SetGroupName("Internet")
-	    .AddConstructor<Ipv4LetFlowRouting>();
+	    .SetGroupName("Internet");
 	return tid;
 }
 
 // Set the flowlet timeout to 50 microseconds.
-Ipv4LetFlowRouting::Ipv4LetFlowRouting(): m_flowletTimeout(MicroSeconds(50)),
-                                          m_ipv4(0) {
+Ipv4LetFlowRouting::Ipv4LetFlowRouting(Ptr<Ipv4GlobalRouting> globalRouting)
+  : m_flowletTimeout(MicroSeconds(50)),
+    m_ipv4(0),
+    m_globalRouting(globalRouting) 
+{
     NS_LOG_FUNCTION(this);
 }
 
 Ipv4LetFlowRouting::~Ipv4LetFlowRouting() {
 	NS_LOG_FUNCTION(this);
-}
-
-void Ipv4LetFlowRouting::AddHostRouteTo(Ipv4Address dst,
-	                                    Ipv4Address nextHop,
-	                                    uint32_t interface) {
-	NS_LOG_FUNCTION(this << " " << dst << " " << nextHop << " " << interface);
-	std::cout << "LetFlow: Adding host route" << std::endl;
-	Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
-	*route = Ipv4RoutingTableEntry::CreateHostRouteTo(dst, nextHop, interface);
-	m_hostRoutes.push_back(route);
-}
-
-void Ipv4LetFlowRouting::AddHostRouteTo(Ipv4Address dst, uint32_t interface) {
-	NS_LOG_FUNCTION(this << " " << dst << " " << interface);
-	std::cout << "LetFlow: Adding host route" << std::endl;
-	Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
-	*route = Ipv4RoutingTableEntry::CreateHostRouteTo(dst, interface);
-	m_hostRoutes.push_back(route);
-}
-
-void Ipv4LetFlowRouting::AddNetworkRouteTo(Ipv4Address network,
-	                                       Ipv4Mask networkMask,
-	                                       Ipv4Address nextHop,
-	                                       uint32_t interface) {
-	NS_LOG_FUNCTION(this << " " << network << " " << networkMask << " "
-		<< nextHop << " " << interface);
-	std::cout << "LetFlow: Adding network route" << std::endl;
-	Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
-	*route = Ipv4RoutingTableEntry::CreateNetworkRouteTo(
-		network, networkMask, interface);
-	m_networkRoutes.push_back(route);
-}
-
-void Ipv4LetFlowRouting::AddNetworkRouteTo(Ipv4Address network,
-	                                       Ipv4Mask networkMask,
-	                                       uint32_t interface) {
-	NS_LOG_FUNCTION(
-		this << " " << network << " " << networkMask << " " << interface);
-	std::cout << "LetFlow: Adding network route" << std::endl;
-	Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
-	*route = Ipv4RoutingTableEntry::CreateNetworkRouteTo(
-		network, networkMask, interface);
-	m_networkRoutes.push_back(route);
-}
-
-void Ipv4LetFlowRouting::AddASExternalRouteTo(Ipv4Address network,
-	                                          Ipv4Mask networkMask,
-	                                          Ipv4Address nextHop,
-	                                          uint32_t interface) {
-	NS_LOG_FUNCTION("LetFlow routing does not support external routes");
-	std::cout << "OH SHIT!" << std::endl;
 }
 
 Ptr<Ipv4Route> Ipv4LetFlowRouting::RouteOutput(Ptr<Packet> packet,
@@ -245,160 +196,32 @@ void Ipv4LetFlowRouting::SetIpv4(Ptr<Ipv4> ipv4) {
 	m_ipv4 = ipv4;
 }
 
-void Ipv4LetFlowRouting::PrintRoutingTable(
-	Ptr<OutputStreamWrapper> stream, Time::Unit unit) const {
-	NS_LOG_FUNCTION(this << " " << stream);
-	std::ostream* os = stream->GetStream();
-	// Copy the current ostream state.
-	std::ios oldState(nullptr);
-	oldState.copyfmt(*os);
-
-	*os << std::resetiosflags(std::ios::adjustfield)
-	    << std::setiosflags(std::ios::left);
-
-	*os << "Node: " << m_ipv4->GetObject<Node>()->GetId() << ", Time: "
-        << Now().As(unit) << ", Local time: "
-        << m_ipv4->GetObject<Node>()->GetLocalTime().As(unit)
-        << ", Ipv4LetFlowRouting table" << std::endl;
-
-    uint32_t numRoutes = GetNRoutes();
-    if (numRoutes > 0) {
-    	*os << "Destination     Gateway         Genmask         Flags Metric Ref"
-    	    << "    Use Iface" << std::endl;
-    	for (uint32_t routeIdx = 0; routeIdx < numRoutes; routeIdx++) {
-    		std::ostringstream dst;
-    		std::ostringstream gtwy;
-    		std::ostringstream mask;
-    		std::ostringstream flags;
-    		Ipv4RoutingTableEntry* route = GetRoute(routeIdx);
-    		// The destination address with a width of 16 characters.
-    		dst << route->GetDest();
-    		*os << std::setw(16) << dst.str();
-    		// The gateway with a width of 16 characters.
-    		gtwy << route->GetGateway();
-    		*os << std::setw(16) << gtwy.str();
-    		// The destination network mask with a width of 16 characters.
-    		mask << route->GetDestNetworkMask();
-    		*os << std::setw(16) << mask.str();
-    		// flags with a width of 6 characters.
-    		flags << "U";
-    		if (route->IsHost()) {
-    			flags << "H";
-    		} else if (route->IsGateway()) {
-    			flags << "G";
-    		}
-    		*os << std::setw(6) << flags.str();
-    		// Metric not implemented.
-            *os << "-"
-                << "      ";
-            // Ref ct not implemented.
-            *os << "-"
-                << "      ";
-            // Use not implemented.
-            *os << "-"
-                << "   ";
-            // The interface.
-            if (!Names::FindName(
-            	m_ipv4->GetNetDevice(route->GetInterface())).empty()) {
-            	*os << Names::FindName(m_ipv4->GetNetDevice(
-            		route->GetInterface()));
-            } else {
-            	*os << route->GetInterface();
-            }
-            *os << std::endl;
-    	}
-    }
-    *os << std::endl;
-    // Restore the previous ostream state.
-    (*os).copyfmt(oldState);
+void Ipv4LetFlowRouting::PrintRoutingTable(Ptr<OutputStreamWrapper> stream,
+	                                       Time::Unit unit) const {
+	m_globalRouting->PrintRoutingTable(stream, unit);
 }
 
 void Ipv4LetFlowRouting::DoDispose(void) {
 	NS_LOG_FUNCTION(this);
-	std::vector<Ipv4RoutingTableEntry*>::iterator i = m_hostRoutes.begin();
-	for (; i != m_hostRoutes.end(); i = m_hostRoutes.erase(i)) {
-		delete(*i);
-	}
-	std::vector<Ipv4RoutingTableEntry*>::iterator j = m_networkRoutes.begin();
-	for (; j != m_networkRoutes.end(); j = m_networkRoutes.erase(i)) {
-		delete(*i);
-	}
 	m_ipv4 = nullptr;
-	Ipv4GlobalRouting::DoDispose();
+	m_globalRouting->DoDispose();
+	m_globalRouting = nullptr;
 }
 
 uint32_t Ipv4LetFlowRouting::GetNRoutes() const {
 	NS_LOG_FUNCTION(this);
-	uint32_t n = 0;
-	n += m_hostRoutes.size();
-	n += m_networkRoutes.size();
-	return n;
+	return m_globalRouting->GetNRoutes();
 }
 
 Ipv4RoutingTableEntry* Ipv4LetFlowRouting::GetRoute(uint32_t i) const {
 	NS_LOG_FUNCTION(this << " " << i);
-	uint32_t tmp = 0;
-	if (i < m_hostRoutes.size()) {
-		auto itr = m_hostRoutes.begin();
-		for (; itr != m_hostRoutes.end(); itr++) {
-			if (tmp == i) {
-				return *itr;
-			}
-			tmp++;
-		}
-	}
-	i -= m_hostRoutes.size();
-	tmp = 0;
-	if (i < m_networkRoutes.size()) {
-		auto itr = m_networkRoutes.begin();
-		for (; itr != m_networkRoutes.end(); itr++) {
-			if (tmp == i) {
-				return *itr;
-			}
-			tmp++;
-		}
-	}
-	return nullptr;
+	return m_globalRouting->GetRoute(i);
 }
 
 std::vector<Ipv4RoutingTableEntry*>
 Ipv4LetFlowRouting::LookupLetFlowRoutes(Ipv4Address dst, Ptr<NetDevice> oif) {
 	NS_LOG_FUNCTION(this << " " << dst << " " << oif);
-	NS_LOG_LOGIC("Looking for route to destination " << dst);
-	std::vector<Ipv4RoutingTableEntry*> letFlowRoutes;
-
-    // Add all host routes to destination.
-	NS_LOG_LOGIC("Number of host routes = " << m_hostRoutes.size());
-    std::vector<Ipv4RoutingTableEntry*>::const_iterator i;
-    for (i = m_hostRoutes.begin(); i != m_hostRoutes.end(); i++) {
-    	NS_ASSERT((*i)->IsHost());
-    	if ((*i)->GetDest() == dst) {
-    		if (oif && oif != m_ipv4->GetNetDevice((*i)->GetInterface())) {
-    			NS_LOG_LOGIC("Not on requested interface, skipping");
-    			continue;
-    		}
-    		letFlowRoutes.push_back(*i);
-    		NS_LOG_LOGIC(letFlowRoutes.size() << " Found host route " << *i);
-    	}
-    }
-
-    // Add all network routes to destination.
-    NS_LOG_LOGIC("Number of network routes " << m_networkRoutes.size());
-    std::vector<Ipv4RoutingTableEntry*>::const_iterator j;
-    for (j = m_networkRoutes.begin(); j != m_networkRoutes.end(); j++) {
-    	Ipv4Mask mask = (*j)->GetDestNetworkMask();
-    	Ipv4Address entry = (*j)->GetDestNetwork();
-    	if (mask.IsMatch(dst, entry)) {
-    		if (oif && oif != m_ipv4->GetNetDevice((*i)->GetInterface())) {
-    			NS_LOG_LOGIC("Not on requested interface, skipping");
-    			continue;
-    		}
-    		letFlowRoutes.push_back(*i);
-    		NS_LOG_LOGIC(
-    			letFlowRoutes.size() << "Found network route " << *i);
-    	}
-    }
-    return letFlowRoutes;
+	return m_globalRouting->GetRoutesToDst(dst, oif);
 }
 
 Ptr<Ipv4Route> Ipv4LetFlowRouting::ConstructIpv4Route(

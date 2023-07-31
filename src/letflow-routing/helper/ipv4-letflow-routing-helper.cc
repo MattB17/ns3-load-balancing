@@ -25,11 +25,12 @@ Ipv4LetFlowRoutingHelper::Create(Ptr<Node> node) const {
 	Ptr<GlobalRouter> globalRouter = CreateObject<GlobalRouter>();
 	node->AggregateObject(globalRouter);
 
-	NS_LOG_LOGIC("Adding LetFlowRouting interface " << node->GetId());
-	Ptr<Ipv4LetFlowRouting> letflowRouting =
-	  CreateObject<Ipv4LetFlowRouting>();
-	globalRouter->SetRoutingProtocol(letflowRouting);
+	NS_LOG_LOGIC("Adding GlobalRouting interface " << node->GetId());
+	Ptr<Ipv4GlobalRouting> globalRouting = CreateObject<Ipv4GlobalRouting>();
+	globalRouter->SetRoutingProtocol(globalRouting);
 
+    Ptr<Ipv4LetFlowRouting> letflowRouting =
+      CreateObject<Ipv4LetFlowRouting>(globalRouting);
 	return letflowRouting;
 }
 

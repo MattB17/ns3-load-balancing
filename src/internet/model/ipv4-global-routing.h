@@ -222,6 +222,18 @@ class Ipv4GlobalRouting : public Ipv4RoutingProtocol
     void RemoveRoute(uint32_t i);
 
     /**
+     * \brief Returns a list of routes to a given destination.
+     * 
+     * \param dst The destination address for which routes are being queried.
+     * \param oif output interface if any (put nullptr otherwise).
+     * 
+     * \returns vector of Ipv4RoutingTableEntry pointers corresponding to
+     * routes to the destination.
+     */
+    std::vector<Ipv4RoutingTableEntry*> GetRoutesToDst(
+      Ipv4Address dst, Ptr<NetDevice> oif = nullptr);
+
+    /**
      * Assign a fixed random variable stream number to the random variables
      * used by this model.  Return the number of streams (possibly zero) that
      * have been assigned.
@@ -231,7 +243,6 @@ class Ipv4GlobalRouting : public Ipv4RoutingProtocol
      */
     int64_t AssignStreams(int64_t stream);
 
-  protected:
     void DoDispose() override;
 
   private:
