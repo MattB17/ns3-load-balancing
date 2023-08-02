@@ -87,7 +87,6 @@ void
 Ipv4GlobalRouting::AddHostRouteTo(Ipv4Address dest, Ipv4Address nextHop, uint32_t interface)
 {
     NS_LOG_FUNCTION(this << dest << nextHop << interface);
-    std::cout << "Global: Adding host route" << std::endl;
     Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
     *route = Ipv4RoutingTableEntry::CreateHostRouteTo(dest, nextHop, interface);
     m_hostRoutes.push_back(route);
@@ -97,7 +96,6 @@ void
 Ipv4GlobalRouting::AddHostRouteTo(Ipv4Address dest, uint32_t interface)
 {
     NS_LOG_FUNCTION(this << dest << interface);
-    std::cout << "Global: Adding host route" << std::endl;
     Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
     *route = Ipv4RoutingTableEntry::CreateHostRouteTo(dest, interface);
     m_hostRoutes.push_back(route);
@@ -110,7 +108,6 @@ Ipv4GlobalRouting::AddNetworkRouteTo(Ipv4Address network,
                                      uint32_t interface)
 {
     NS_LOG_FUNCTION(this << network << networkMask << nextHop << interface);
-    std::cout << "Global: Adding network route" << std::endl;
     Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
     *route = Ipv4RoutingTableEntry::CreateNetworkRouteTo(network, networkMask, nextHop, interface);
     m_networkRoutes.push_back(route);
@@ -120,7 +117,6 @@ void
 Ipv4GlobalRouting::AddNetworkRouteTo(Ipv4Address network, Ipv4Mask networkMask, uint32_t interface)
 {
     NS_LOG_FUNCTION(this << network << networkMask << interface);
-    std::cout << "Global: Adding network route" << std::endl;
     Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
     *route = Ipv4RoutingTableEntry::CreateNetworkRouteTo(network, networkMask, interface);
     m_networkRoutes.push_back(route);
@@ -133,7 +129,6 @@ Ipv4GlobalRouting::AddASExternalRouteTo(Ipv4Address network,
                                         uint32_t interface)
 {
     NS_LOG_FUNCTION(this << network << networkMask << nextHop << interface);
-    std::cout << "Global: Adding external route" << std::endl;
     Ipv4RoutingTableEntry* route = new Ipv4RoutingTableEntry();
     *route = Ipv4RoutingTableEntry::CreateNetworkRouteTo(network, networkMask, nextHop, interface);
     m_ASexternalRoutes.push_back(route);

@@ -12,6 +12,7 @@
 #include "ns3/object.h"
 #include "ns3/packet.h"
 #include "ns3/simulator.h"
+#include "ns3/nstime.h"
 
 #include <algorithm>
 
@@ -24,7 +25,13 @@ NS_OBJECT_ENSURE_REGISTERED(Ipv4LetFlowRouting);
 TypeId Ipv4LetFlowRouting::GetTypeId(void) {
 	static TypeId tid = TypeId("ns3::Ipv4LetFlowRouting")
 	    .SetParent<Object>()
-	    .SetGroupName("Internet");
+	    .SetGroupName("Internet")
+	    .AddAttribute("FlowletTimeout",
+	    	          "The minimum inter-packet arrival gap to denote a new "
+	    	          "flowlet",
+	    	          TimeValue(MicroSeconds(50)),
+	    	          MakeTimeAccessor(&Ipv4LetFlowRouting::m_flowletTimeout),
+	    	          MakeTimeChecker());
 	return tid;
 }
 
@@ -45,8 +52,7 @@ Ptr<Ipv4Route> Ipv4LetFlowRouting::RouteOutput(Ptr<Packet> packet,
 	                                           const Ipv4Header& header,
 	                                           Ptr<NetDevice> oif,
 	                                           Socket::SocketErrno& sockerr) {
-	NS_LOG_FUNCTION(this << " " << packet << " " << &header << " " << oif
-		<< " " << &sockerr);
+	NS_LOG_FUNCTION(this << packet << &header << oif << &sockerr);
 	// Does not support multicast
 	if (header.GetDestination().IsMulticast()) {
 		NS_LOG_ERROR("LetFlow does not support multicast");
@@ -109,7 +115,8 @@ bool Ipv4LetFlowRouting::RouteInput(Ptr<const Packet> p,
 	// Flow ID for the packet.
 	bool flowIdFound = packet->PeekPacketTag(flowIdTag);
 	if (!flowIdFound) {
-		NS_LOG_ERROR(this << " LetFlow routing cannot extract the flow ID");
+		NS_LOG_ERROR(this << " LetFlow routing cannot extract the flow ID, "
+			         << "falling back to global routing");
 		ecb(packet, header, Socket::ERROR_NOROUTETOHOST);
 		return false;
 	}
@@ -167,13 +174,13 @@ bool Ipv4LetFlowRouting::RouteInput(Ptr<const Packet> p,
 	LetFlowFlowlet flowlet;
 	flowlet.port = selectedPort;
 	flowlet.activeTime = now;
-	Ptr<Ipv4Route> route = Ipv4LetFlowRouting::ConstructIpv4Route(
-		selectedPort, dstAddress);
-	ucb(route, packet, header);
-
 	// Update the flowlet table.
 	m_flowletTable[flowId] = flowlet;
 
+	// Construct the route.
+	Ptr<Ipv4Route> route = Ipv4LetFlowRouting::ConstructIpv4Route(
+		selectedPort, dstAddress);
+	ucb(route, packet, header);
 	return true;
 }
 
@@ -220,7 +227,7 @@ Ipv4RoutingTableEntry* Ipv4LetFlowRouting::GetRoute(uint32_t i) const {
 
 std::vector<Ipv4RoutingTableEntry*>
 Ipv4LetFlowRouting::LookupLetFlowRoutes(Ipv4Address dst, Ptr<NetDevice> oif) {
-	NS_LOG_FUNCTION(this << " " << dst << " " << oif);
+	NS_LOG_FUNCTION(this  << dst  << oif);
 	return m_globalRouting->GetRoutesToDst(dst, oif);
 }
 

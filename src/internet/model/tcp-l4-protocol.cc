@@ -37,6 +37,7 @@
 
 #include "ns3/assert.h"
 #include "ns3/boolean.h"
+#include "ns3/flow-id-tag.h"
 #include "ns3/ipv4-route.h"
 #include "ns3/ipv6-route.h"
 #include "ns3/log.h"
@@ -579,6 +580,27 @@ TcpL4Protocol::Receive(Ptr<Packet> packet,
     return IpL4Protocol::RX_OK;
 }
 
+void TcpL4Protocol::AttachFlowId(Ptr<Packet> packet, const Ipv4Address& saddr,
+                                 const Ipv4Address& daddr, uint16_t sport,
+                                 uint16_t dport) const {
+    uint32_t flowId = TcpL4Protocol::ConstructFlowId(saddr, daddr, sport, dport);
+    packet->AddPacketTag(FlowIdTag(flowId));
+}
+
+uint32_t TcpL4Protocol::ConstructFlowId(const Ipv4Address& saddr,
+                                        const Ipv4Address& daddr,
+                                        uint16_t sport,
+                                        uint16_t dport) const {
+    uint32_t flowId = 0;
+    flowId ^= saddr.Get();
+    flowId ^= daddr.Get();
+    flowId ^= sport;
+    flowId ^= (dport << 16);
+    flowId += PROT_NUMBER;
+
+    return flowId;
+}
+
 void
 TcpL4Protocol::SendPacketV4(Ptr<Packet> packet,
                             const TcpHeader& outgoing,
@@ -591,8 +613,14 @@ TcpL4Protocol::SendPacketV4(Ptr<Packet> packet,
                                   << " ack " << outgoing.GetAckNumber() << " flags "
                                   << TcpHeader::FlagsToString(outgoing.GetFlags()) << " data size "
                                   << packet->GetSize());
-    // XXX outgoingHeader cannot be logged
 
+    TcpL4Protocol::AttachFlowId(packet,
+                                saddr,
+                                daddr,
+                                outgoing.GetSourcePort(),
+                                outgoing.GetDestinationPort());
+
+    // XXX outgoingHeader cannot be logged
     TcpHeader outgoingHeader = outgoing;
     /** \todo UrgentPointer */
     /* outgoingHeader.SetUrgentPointer (0); */

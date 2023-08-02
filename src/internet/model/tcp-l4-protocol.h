@@ -345,6 +345,36 @@ class TcpL4Protocol : public IpL4Protocol
     IpL4Protocol::DownTargetCallback6 m_downTarget6; //!< Callback to send packets over IPv6
 
     /**
+     * \brief Attach a Flow ID to the packet.
+     * 
+     * The flow ID is used to identify when a packet belongs to a particular
+     * flow.
+     * 
+     * \param packet the packet to which the flow ID will be attached.
+     * \param saddr the source address for the packet.
+     * \param daddr the destination address for the packet.
+     * \param sport the source port from which the packet was sent.
+     * \param dport the destination port at which the packet will arrive.
+     */
+    void AttachFlowId(
+      Ptr<Packet> packet, const Ipv4Address& saddr, const Ipv4Address& daddr,
+      uint16_t sport, uint16_t dport) const;
+
+    /**
+     * \brief Constructs the flow ID.
+     * 
+     * The Flow ID is constructed from the given data.
+     * 
+     * \param saddr the source address for the packet.
+     * \param daddr the destination address for the packet.
+     * \param sport the source port from which the packet was sent.
+     * \param dport the destination port at which the packet will arrive.
+     */
+    uint32_t ConstructFlowId(
+      const Ipv4Address& saddr, const Ipv4Address& daddr,
+      uint16_t sport, uint16_t dport) const;
+
+    /**
      * \brief Send a packet via TCP (IPv4)
      *
      * \param pkt The packet to send

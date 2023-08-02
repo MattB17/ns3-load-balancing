@@ -6,6 +6,7 @@
 #include "ns3/ipv4-letflow-routing-helper.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
+#include "ns3/nstime.h"
 
 #include <iostream>
 
@@ -41,6 +42,8 @@ main(int argc, char* argv[])
 
     double endTime = 10.0;
 
+    uint16_t flowletTimeoutMs = 100;
+
     CommandLine cmd;
     
     cmd.AddValue("verbose", "Tell LetFlowRouting to log if true", verbose);
@@ -51,8 +54,14 @@ main(int argc, char* argv[])
         sendRate);
     cmd.AddValue(
         "endTime", "The time when the application stops sending", endTime);
+    cmd.AddValue("FlowletTimeoutMs",
+                 "The flowlet timeout in ms",
+                 flowletTimeoutMs);
 
     cmd.Parse(argc, argv);
+
+    Config::SetDefault("ns3::Ipv4LetFlowRouting::FlowletTimeout",
+                       TimeValue(MicroSeconds(flowletTimeoutMs)));
 
     if (verbose) {
         LogComponentEnable("Ipv4LetFlowRouting", LOG_LEVEL_LOGIC);
