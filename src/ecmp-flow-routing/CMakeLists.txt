@@ -24,7 +24,10 @@ build_lib(
     LIBNAME ecmp-flow-routing
     SOURCE_FILES ${source_files}
     HEADER_FILES ${header_files}
-    LIBRARIES_TO_LINK ${libcore}
+    LIBRARIES_TO_LINK
+      ${libcore}
+      ${libinternet}
+      ${libnetwork}
     TEST_SOURCES test/ipv4-ecmp-flow-routing-test-suite.cc
                  ${examples_as_tests_sources}
 )
