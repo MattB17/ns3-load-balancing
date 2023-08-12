@@ -27,18 +27,18 @@ TypeId Ipv4LetFlowRouting::GetTypeId(void) {
 	    .SetParent<Object>()
 	    .SetGroupName("Internet")
 	    .AddAttribute("FlowletTimeout",
-	    	          "The minimum inter-packet arrival gap to denote a new "
-	    	          "flowlet",
-	    	          TimeValue(MicroSeconds(50)),
-	    	          MakeTimeAccessor(&Ipv4LetFlowRouting::m_flowletTimeout),
-	    	          MakeTimeChecker());
+	    	            "The minimum inter-packet arrival gap to denote a new "
+	    	            "flowlet",
+	    	            TimeValue(MicroSeconds(50)),
+	    	            MakeTimeAccessor(&Ipv4LetFlowRouting::m_flowletTimeout),
+	    	            MakeTimeChecker());
 	return tid;
 }
 
 // Set the flowlet timeout to 50 microseconds.
 Ipv4LetFlowRouting::Ipv4LetFlowRouting(Ptr<Ipv4GlobalRouting> globalRouting)
   : m_flowletTimeout(MicroSeconds(50)),
-    m_ipv4(0),
+    m_ipv4(nullptr),
     m_globalRouting(globalRouting) 
 {
     NS_LOG_FUNCTION(this);
@@ -53,26 +53,9 @@ Ptr<Ipv4Route> Ipv4LetFlowRouting::RouteOutput(Ptr<Packet> packet,
 	                                           Ptr<NetDevice> oif,
 	                                           Socket::SocketErrno& sockerr) {
 	NS_LOG_FUNCTION(this << packet << &header << oif << &sockerr);
-	// Does not support multicast
-	if (header.GetDestination().IsMulticast()) {
-		NS_LOG_ERROR("LetFlow does not support multicast");
-		return nullptr;
-	}
-
-    // See if this is a unicast packet we have a destination for.
-    NS_LOG_LOGIC("Unicast destination, looking up");
-    std::vector<Ipv4RoutingTableEntry*> routeEntries =
-        Ipv4LetFlowRouting::LookupLetFlowRoutes(header.GetDestination(), oif);
-    if (routeEntries.empty()) {
-    	sockerr = Socket::ERROR_NOROUTETOHOST;
-     	return nullptr;
-    }
-    // Otherwise we found a route.
-    sockerr = Socket::ERROR_NOTERROR;
-    uint32_t selectedPort = routeEntries[
-    	rand() % routeEntries.size()]->GetInterface();
-    return Ipv4LetFlowRouting::ConstructIpv4Route(
-    	selectedPort, header.GetDestination());
+	// Delegate to Global Routing. LetFlow is only implemented in the network
+	// and does not extend to the hosts.
+	return m_globalRouting->RouteOutput(packet, header, oif, sockerr);
 }
 
 // Receive an input packet on input device `idev`.
@@ -117,8 +100,7 @@ bool Ipv4LetFlowRouting::RouteInput(Ptr<const Packet> p,
 	if (!flowIdFound) {
 		NS_LOG_ERROR(this << " LetFlow routing cannot extract the flow ID, "
 			         << "falling back to global routing");
-		ecb(packet, header, Socket::ERROR_NOROUTETOHOST);
-		return false;
+		return m_globalRouting->RouteInput(p, header, idev, ucb, mcb, lcb, ecb);
 	}
 	// If the flow ID was found, extract it.
 	flowId = flowIdTag.GetFlowId();
@@ -184,16 +166,22 @@ bool Ipv4LetFlowRouting::RouteInput(Ptr<const Packet> p,
 	return true;
 }
 
-void Ipv4LetFlowRouting::NotifyInterfaceUp(uint32_t interface) {}
+void Ipv4LetFlowRouting::NotifyInterfaceUp(uint32_t interface) {
+	m_globalRouting->NotifyInterfaceUp(interface);
+}
 
-void Ipv4LetFlowRouting::NotifyInterfaceDown(uint32_t interface) {}
+void Ipv4LetFlowRouting::NotifyInterfaceDown(uint32_t interface) {
+	m_globalRouting->NotifyInterfaceDown(interface);
+}
 
 void Ipv4LetFlowRouting::NotifyAddAddress(
 	uint32_t interface, Ipv4InterfaceAddress address) {
+	m_globalRouting->NotifyAddAddress(interface, address);
 }
 
 void Ipv4LetFlowRouting::NotifyRemoveAddress(
 	uint32_t interface, Ipv4InterfaceAddress address) {
+	m_globalRouting->NotifyRemoveAddress(interface, address);
 }
 
 // Set the IPv4 address.
