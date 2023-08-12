@@ -61,6 +61,7 @@ Ptr<Ipv4Route> Ipv4EcmpFlowRouting::PickEcmpRoute(Ipv4Address dst,
 				<< selectIndex << " for flow: " << flowId);
 		} else {
 			selectIndex = 0;
+			NS_LOG_LOGIC("Flow ID was 0, picking default route");
 		}
 
 		Ipv4RoutingTableEntry* route = allRoutes.at(selectIndex);

@@ -10,14 +10,3 @@ build_example(
     ${libapplications}
     ${libflow-monitor}
 )
-
-build_example(
-  NAME flow-level-ecmp
-  SOURCE_FILES flow-level-ecmp.cc
-  LIBRARIES_TO_LINK
-    ${libcore}
-    ${libpoint-to-point}
-    ${libinternet}
-    ${libapplications}
-    ${libflow-monitor}
-)
