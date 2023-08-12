@@ -249,12 +249,6 @@ class Ipv4GlobalRouting : public Ipv4RoutingProtocol
     /// Set to true if packets are randomly routed among ECMP; set to false for using only one route
     /// consistently
     bool m_randomEcmpRouting;
-    /// Set to true if ECMP routing is done at the flow level; that is, flows are randomly pinned
-    /// to paths but all packets of the flow go down the same path.
-    /// With random ECMP routing each packet is randomly assigned to a path and so there can be
-    /// significant reorderings within a flow, flow level ECMP resolves this issue as all packets
-    /// traverse the same path.
-    bool m_flowLevelEcmpRouting;
     /// Set to true if this interface should respond to interface events by globallly recomputing
     /// routes
     bool m_respondToInterfaceEvents;
@@ -284,24 +278,14 @@ class Ipv4GlobalRouting : public Ipv4RoutingProtocol
 
     /**
      * \brief Lookup in the forwarding table for destination.
+     * 
      * \param dest destination address.
-     * \param header the packet header for the packet being routed.
-     * \param flowId the ID of the flow to which the packet belongs.
      * \param oif output interface if any (put 0 otherwise).
+     * 
      * \return Ipv4Route to route the packet to reach dest address
      */
     Ptr<Ipv4Route> LookupGlobal(
-      Ipv4Address dest, const Ipv4Header& header,
-      uint32_t flowId, Ptr<NetDevice> oif = nullptr);
-
-    /**
-     * \brief Extract the flow ID for the flow being routed.
-     * 
-     * \param p a pointer to the packet being routed.
-     * 
-     * \return uint32_t the ID of the flow to which the packet belongs.
-     */
-    uint32_t ExtractFlowId(Ptr<Packet> p);
+      Ipv4Address dest, Ptr<NetDevice> oif = nullptr);
 
     HostRoutes m_hostRoutes;             //!< Routes to hosts
     NetworkRoutes m_networkRoutes;       //!< Routes to networks
