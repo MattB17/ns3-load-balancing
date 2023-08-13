@@ -53,9 +53,11 @@ Ptr<Ipv4Route> Ipv4LetFlowRouting::RouteOutput(Ptr<Packet> packet,
 	                                           Ptr<NetDevice> oif,
 	                                           Socket::SocketErrno& sockerr) {
 	NS_LOG_FUNCTION(this << packet << &header << oif << &sockerr);
+	NS_LOG_LOGIC(this << "Route Output for " << packet);
 	// Delegate to Global Routing. LetFlow is only implemented in the network
 	// and does not extend to the hosts.
-	return m_globalRouting->RouteOutput(packet, header, oif, sockerr);
+	Ptr<Ipv4Route> rtentry = m_globalRouting->RouteOutput(packet, header, oif, sockerr);
+	return rtentry;
 }
 
 // Receive an input packet on input device `idev`.
@@ -187,8 +189,9 @@ void Ipv4LetFlowRouting::NotifyRemoveAddress(
 // Set the IPv4 address.
 void Ipv4LetFlowRouting::SetIpv4(Ptr<Ipv4> ipv4) {
 	NS_LOG_LOGIC(this << " Setting up IPv4: " << ipv4);
-	NS_ASSERT(m_ipv4 == 0 && ipv4 != 0);
+	NS_ASSERT(m_ipv4 == nullptr && ipv4 != nullptr);
 	m_ipv4 = ipv4;
+	m_globalRouting->SetIpv4(ipv4);
 }
 
 void Ipv4LetFlowRouting::PrintRoutingTable(Ptr<OutputStreamWrapper> stream,

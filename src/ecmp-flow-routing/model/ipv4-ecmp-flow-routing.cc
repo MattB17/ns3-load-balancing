@@ -170,6 +170,7 @@ void Ipv4EcmpFlowRouting::SetIpv4(Ptr<Ipv4> ipv4) {
 	NS_LOG_LOGIC(this << " Setting up IPv4: " << ipv4);
 	NS_ASSERT(m_ipv4 == nullptr && ipv4 != nullptr);
 	m_ipv4 = ipv4;
+	m_globalRouting->SetIpv4(ipv4);
 }
 
 void Ipv4EcmpFlowRouting::DoDispose() {

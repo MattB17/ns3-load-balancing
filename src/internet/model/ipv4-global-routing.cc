@@ -130,7 +130,7 @@ Ipv4GlobalRouting::AddASExternalRouteTo(Ipv4Address network,
 
 std::vector<Ipv4RoutingTableEntry*>
 Ipv4GlobalRouting::GetRoutesToDst(Ipv4Address dst, Ptr<NetDevice> oif) {
-    NS_LOG_FUNCTION(this << " " << dst << " " << oif);
+    NS_LOG_FUNCTION(this << dst << oif);
     NS_LOG_LOGIC("Looking for all routes to " << dst);
     std::vector<Ipv4RoutingTableEntry*> dstRoutes;
 
@@ -150,7 +150,7 @@ Ipv4GlobalRouting::GetRoutesToDst(Ipv4Address dst, Ptr<NetDevice> oif) {
     }
     // No host route found.
     if (dstRoutes.empty()) {
-        NS_LOG_LOGIC("Number of network routes " << m_networkRoutes.size());
+        NS_LOG_LOGIC("Number of network routes = " << m_networkRoutes.size());
         NetworkRoutesI j = m_networkRoutes.begin();
         for (; j != m_networkRoutes.end(); j++) {
             Ipv4Mask mask = (*j)->GetDestNetworkMask();
@@ -163,7 +163,7 @@ Ipv4GlobalRouting::GetRoutesToDst(Ipv4Address dst, Ptr<NetDevice> oif) {
                 }
                 dstRoutes.push_back(*j);
                 NS_LOG_LOGIC(
-                    dstRoutes.size() << "Found global network route " << *j);
+                    "Found " << dstRoutes.size() << " global network route " << *j);
             }
         }
     }
@@ -185,6 +185,7 @@ Ipv4GlobalRouting::GetRoutesToDst(Ipv4Address dst, Ptr<NetDevice> oif) {
             }
         }
     }
+    NS_LOG_LOGIC("Found destination routes");
     return dstRoutes;
 }
 
@@ -215,6 +216,7 @@ Ipv4GlobalRouting::LookupGlobal(Ipv4Address dest, Ptr<NetDevice> oif)
         rtentry = Create<Ipv4Route>();
         rtentry->SetDestination(route->GetDest());
         /// \todo handle multi-address case
+        NS_LOG_LOGIC("Setting source address " << m_ipv4);
         rtentry->SetSource(m_ipv4->GetAddress(route->GetInterface(), 0).GetLocal());
         rtentry->SetGateway(route->GetGateway());
         uint32_t interfaceIdx = route->GetInterface();
