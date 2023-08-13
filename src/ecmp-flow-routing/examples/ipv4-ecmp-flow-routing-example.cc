@@ -31,63 +31,21 @@
 // numNodesInCenter controls the number of nodes in the middle.
 // The default is 3 as shown below.
 //
-//                 n1
+//                 n2
 //                /  \
 //               /    \
 //              /      \
 //             /        \
-//           n0 - -n2- - n4 - - n5
+//    n0 - - n1 - -n3- - n5 - - n6
 //             \        /
 //              \      /
 //               \    /
 //                \  /
-//                 n3
+//                 n4
 
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("FlowLevelEcmpRouting");
-
-template<typename T>
-T RandRange(T min, T max) {
-    return min + (((double)max - min) * (rand() / RAND_MAX));
-}
-
-void InstallSourceAndSink(uint16_t port_num, Ptr<Node> src_node,
-                          Ptr<Node> dst_node, Ipv4Address dst_addr,
-                          double start_time, double end_time,
-                          std::string data_rate) {
-    OnOffHelper onoff("ns3::TcpSocketFactory", Address(InetSocketAddress(
-        dst_addr, port_num)));
-    onoff.SetConstantRate(DataRate(data_rate));
-    ApplicationContainer src_app = onoff.Install(src_node);
-    src_app.Start(Seconds(start_time));
-    src_app.Stop(Seconds(end_time));
-
-    // Create a packet sink to receive the packets.
-    // Accepts a connection from any IP address on that port.
-    PacketSinkHelper sink("ns3::TcpSocketFactory", Address(InetSocketAddress(
-        Ipv4Address::GetAny(), port_num)));
-    ApplicationContainer dst_app = sink.Install(dst_node);
-    dst_app.Start(Seconds(start_time));
-    dst_app.Stop(Seconds(end_time));
-}
-
-void InstallApplications(uint16_t start_port, size_t num_flows,
-                         Ptr<Node> src_node, Ptr<Node> dst_node, 
-                         Ipv4Address dst_addr, double start_time,
-                         double flow_launch_end_time, double end_time,
-                         std::vector<std::string> data_rates) {
-    uint16_t curr_port = start_port;
-    double curr_flow_launch_time;
-    std::string curr_data_rate;
-    for (size_t flow_idx = 0; flow_idx < num_flows; flow_idx++) {
-        curr_flow_launch_time = RandRange(start_time, flow_launch_end_time);
-        curr_data_rate = data_rates[RandRange((size_t)0, data_rates.size() - 1)];
-        InstallSourceAndSink(curr_port, src_node, dst_node, dst_addr,
-                             curr_flow_launch_time, end_time, curr_data_rate);
-        curr_port++;
-    }
-}
 
 int main(int argc, char* argv[]) {
     // turning on explicit debugging.
@@ -99,7 +57,8 @@ int main(int argc, char* argv[]) {
     Config::SetDefault("ns3::OnOffApplication::PacketSize", UintegerValue(210));
     Config::SetDefault("ns3::OnOffApplication::DataRate", StringValue("500kb/s"));
 
-    // Setup ECMP routing.
+    // Setup Random ECMP routing in the case that we fall back to the global
+    // router.
     Config::SetDefault(
         "ns3::Ipv4GlobalRouting::RandomEcmpRouting", BooleanValue(true));
 
@@ -129,7 +88,8 @@ int main(int argc, char* argv[]) {
 
     // Create the nodes and links them together.
     NodeContainer n;
-    n.Create(numNodesInCenter + 3);
+    // Number of nodes in center plus two nodes on each side.
+    n.Create(numNodesInCenter + 4);
 
     Ipv4EcmpFlowRoutingHelper ecmpFlowRouting;
     InternetStackHelper internet;
@@ -137,9 +97,9 @@ int main(int argc, char* argv[]) {
     internet.Install(n);
 
     Ipv4AddressHelper ipv4L;
-    ipv4L.SetBase("10.1.1.0", "255.255.255.0");
+    ipv4L.SetBase("10.1.2.0", "255.255.255.0");
     Ipv4AddressHelper ipv4R;
-    ipv4R.SetBase("10.1.2.0", "255.255.255.0");
+    ipv4R.SetBase("10.1.3.0", "255.255.255.0");
 
     // We think of every node other than the last as being part of the core
     // network infrastructure.
@@ -154,12 +114,12 @@ int main(int argc, char* argv[]) {
     // Add the necessary IP addresses and point to point links.
     // We add the links from n0 to all of n1 to nk where k = numNodesInCenter
     // and all the links from n1 to nk to n_k+1.
-    for (int node_idx = 1; node_idx <= numNodesInCenter; node_idx++) {
-        nc = NodeContainer(n.Get(0), n.Get(node_idx));
+    for (int node_idx = 2; node_idx <= numNodesInCenter + 1; node_idx++) {
+        nc = NodeContainer(n.Get(1), n.Get(node_idx));
         ndc = p2pInternal.Install(nc);
         iic = ipv4L.Assign(ndc);
 
-        nc = NodeContainer(n.Get(node_idx), n.Get(numNodesInCenter + 1));
+        nc = NodeContainer(n.Get(node_idx), n.Get(numNodesInCenter + 2));
         ndc = p2pInternal.Install(nc);
         iic = ipv4R.Assign(ndc);
     }
@@ -170,36 +130,35 @@ int main(int argc, char* argv[]) {
     PointToPointHelper p2pEdge;
     p2pEdge.SetDeviceAttribute("DataRate", StringValue("15Mbps"));
     p2pEdge.SetChannelAttribute("Delay", StringValue("10ms"));
-    nc = NodeContainer(n.Get(numNodesInCenter+1), n.Get(numNodesInCenter+2));
-    ndc = p2pEdge.Install(nc);
+    NodeContainer nL = NodeContainer(n.Get(0), n.Get(1));
+    NodeContainer nR = NodeContainer(n.Get(numNodesInCenter+2), n.Get(numNodesInCenter+3));
+    NetDeviceContainer ndL = p2pEdge.Install(nL);
+    NetDeviceContainer ndR = p2pEdge.Install(nR);
 
     Ipv4AddressHelper ipv4;
-    ipv4.SetBase("10.1.3.0", "255.255.255.0");
-    iic = ipv4.Assign(ndc);
+    ipv4.SetBase("10.1.1.0", "255.255.255.0");
+    Ipv4InterfaceContainer iiL = ipv4.Assign(ndL);
+    ipv4.SetBase("10.1.4.0", "255.255.255.0");
+    Ipv4InterfaceContainer iiR = ipv4.Assign(ndR);
 
     // Initialize routing database and set up the routing tables in the nodes.
     Ipv4EcmpFlowRoutingHelper::PopulateRoutingTables();
 
     std::vector<std::string> data_rates = {"400kb/s", "500kb/s", "600kb/s"};
-    InstallApplications(1000, numSmallFlows, n.Get(0),
-                        n.Get(numNodesInCenter + 2), iic.GetAddress(1),
-                        1.0, 5.0, 10.0, data_rates);
+    OnOffPairsHelper pairsHelper(
+        1000, n.Get(0), n.Get(numNodesInCenter + 2),
+        iiR.GetAddress(1), data_rates);
+    pairsHelper.InstallFlows(numSmallFlows, 1.0, 5.0, 10.0);
 
-    AsciiTraceHelper ascii;
-    p2pInternal.EnableAsciiAll(ascii.CreateFileStream(
-        "outputs/flow-level-ecmp-example/trace.tr"));
-    p2pInternal.EnablePcapAll("outputs/flow-level-ecmp-example/switch");
-
-    FlowMonitorHelper flowmonHelper;
-    flowmonHelper.InstallAll();
+    if (tracing) {
+        AsciiTraceHelper ascii;
+        p2pInternal.EnableAsciiAll(ascii.CreateFileStream(
+            "outputs/flow-level-ecmp-example/trace.tr"));
+        p2pInternal.EnablePcapAll("outputs/flow-level-ecmp-example/switch");
+    }
 
     Simulator::Stop(Seconds(11.0));
     Simulator::Run();
-
-    // Needs to be after the run command to pick up the flows.
-    flowmonHelper.SerializeToXmlFile(
-        "outputs/flow-level-ecmp-example/flow.flowmon", true, false);
-
     Simulator::Destroy();
 
 }
