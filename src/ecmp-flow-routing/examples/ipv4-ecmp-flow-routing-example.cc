@@ -49,9 +49,7 @@ NS_LOG_COMPONENT_DEFINE("FlowLevelEcmpRouting");
 
 int main(int argc, char* argv[]) {
     // turning on explicit debugging.
-#if 1
     LogComponentEnable("FlowLevelEcmpRouting", LOG_LEVEL_INFO);
-#endif
 
     // Packets have size 210 and the data rate is 500kb/s.
     Config::SetDefault("ns3::OnOffApplication::PacketSize", UintegerValue(210));
@@ -160,5 +158,7 @@ int main(int argc, char* argv[]) {
     Simulator::Stop(Seconds(11.0));
     Simulator::Run();
     Simulator::Destroy();
+
+    return 0;
 
 }

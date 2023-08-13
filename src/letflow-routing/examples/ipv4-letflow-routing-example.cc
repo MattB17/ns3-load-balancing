@@ -10,54 +10,61 @@
 
 #include <iostream>
 
-/**
- * \file ipv4-let-flow-routing-example
- *
- * An example of LetFlow Routing.
- * 
- * The topology is given by the following diagram with node A sending
- * traffic to node F:
- * 
- *  nC   nD
- *  |\  /|
- *  | \/ |
- *  | /\ |
- *  |/  \|
- *  nB   nE
- *  |    |
- *  |    |
- *  |    |
- *  nA   nF
- */
+// Default Network Topology
+// numNodesInCenter controls the number of nodes in the middle.
+// The default is 3 as shown below.
+//
+//                 n2
+//                /  \
+//               /    \
+//              /      \
+//             /        \
+//    n0 - - n1 - -n3- - n5 - - n6
+//             \        /
+//              \      /
+//               \    /
+//                \  /
+//                 n4
 
 using namespace ns3;
 
-int
-main(int argc, char* argv[])
+NS_LOG_COMPONENT_DEFINE("LetFlowRoutingExample");
+
+int main(int argc, char* argv[])
 {
-    bool verbose = true;
-    bool tracing = false;
+    LogComponentEnable("LetFlowRoutingExample", LOG_LEVEL_INFO);
 
-    uint16_t sendRate = 6000;
+    // Packets have size 210 and the data rate is 500kb/s.
+    Config::SetDefault("ns3::OnOffApplication::PacketSize", UintegerValue(210));
+    Config::SetDefault("ns3::OnOffApplication::DataRate", StringValue("500kb/s"));
 
-    double endTime = 10.0;
+    // Setup Random ECMP routing in the case that we fall back to the global
+    // router.
+    Config::SetDefault(
+        "ns3::Ipv4GlobalRouting::RandomEcmpRouting", BooleanValue(true));
 
+    uint32_t numNodesInCenter = 3;
     uint16_t flowletTimeoutMs = 100;
+    size_t numSmallFlows = 15;
+    bool verbose = false;
+    bool tracing = true;
 
     CommandLine cmd;
-    
-    cmd.AddValue("verbose", "Tell LetFlowRouting to log if true", verbose);
-    cmd.AddValue("tracing", "Whether or not tracing is enabled", tracing);
-    cmd.AddValue(
-        "sendRate",
-        "The rate at which the application sends data in bps",
-        sendRate);
-    cmd.AddValue(
-        "endTime", "The time when the application stops sending", endTime);
-    cmd.AddValue("FlowletTimeoutMs",
+    cmd.AddValue("numNodesInCenter", 
+                 "Number of nodes in each level of the topology",
+                 numNodesInCenter);
+    cmd.AddValue("numSmallFlows",
+                 "number of small flows to start in the simulation",
+                 numSmallFlows);
+    cmd.AddValue("verbose",
+                 "Controls whether logging is enabled",
+                 verbose);
+    cmd.AddValue("tracing",
+                 "Controls whether tracing is enabled",
+                 tracing);
+    cmd.AddValue("flowletTimeoutMs",
                  "The flowlet timeout in ms",
                  flowletTimeoutMs);
-
     cmd.Parse(argc, argv);
 
     Config::SetDefault("ns3::Ipv4LetFlowRouting::FlowletTimeout",
@@ -67,91 +74,79 @@ main(int argc, char* argv[])
         LogComponentEnable("Ipv4LetFlowRouting", LOG_LEVEL_LOGIC);
     }
 
-    Ptr<Node> nA = CreateObject<Node>();
-    Ptr<Node> nB = CreateObject<Node>();
-    Ptr<Node> nC = CreateObject<Node>();
-    Ptr<Node> nD = CreateObject<Node>();
-    Ptr<Node> nE = CreateObject<Node>();
-    Ptr<Node> nF = CreateObject<Node>();
+    // Create the nodes and links them together.
+    NodeContainer n;
+    // Number of nodes in center plus two nodes on each side.
+    n.Create(numNodesInCenter + 4);
 
-    NodeContainer nAnB(nA, nB);
-    NodeContainer nBnC(nB, nC);
-    NodeContainer nBnD(nB, nD);
-    NodeContainer nEnC(nE, nC);
-    NodeContainer nEnD(nE, nD);
-    NodeContainer nFnE(nF, nE);
-
-    NodeContainer allNodes(nA, nB, nC, nD, nE, nF);
-
-    Ipv4LetFlowRoutingHelper letflowRouting;
+    Ipv4LetFlowRoutingHelper letFlowRouting;
     InternetStackHelper internet;
-    internet.SetRoutingHelper(letflowRouting);
-    internet.Install(allNodes);
+    internet.SetRoutingHelper(letFlowRouting);
+    internet.Install(n);
 
-    // Create the peer-to-peer links with data rates 5Mbps and delay of 2ms.
-    PointToPointHelper p2p;
-    p2p.SetDeviceAttribute("DataRate", StringValue("5Mbps"));
-    p2p.SetChannelAttribute("Delay", StringValue("2ms"));
-    NetDeviceContainer dAdB = p2p.Install(nAnB);
-    NetDeviceContainer dBdC = p2p.Install(nBnC);
-    NetDeviceContainer dBdD = p2p.Install(nBnD);
-    NetDeviceContainer dEdC = p2p.Install(nEnC);
-    NetDeviceContainer dEdD = p2p.Install(nEnD);
-    NetDeviceContainer dFdE = p2p.Install(nFnE);
+    Ipv4AddressHelper ipv4L;
+    ipv4L.SetBase("10.1.2.0", "255.255.255.0");
+    Ipv4AddressHelper ipv4R;
+    ipv4R.SetBase("10.1.3.0", "255.255.255.0");
 
-    // Add IP addresses to the devices.
+    // We think of every node other than the last as being part of the core
+    // network infrastructure.
+    PointToPointHelper p2pInternal;
+    p2pInternal.SetDeviceAttribute("DataRate", StringValue("5Mbps"));
+    p2pInternal.SetChannelAttribute("Delay", StringValue("2ms"));
+
+    NodeContainer nc;
+    NetDeviceContainer ndc;
+    Ipv4InterfaceContainer iic;
+
+    // Add the necessary IP addresses and point to point links.
+    // We add the links from n0 to all of n1 to nk where k = numNodesInCenter
+    // and all the links from n1 to nk to n_k+1.
+    for (int node_idx = 2; node_idx <= numNodesInCenter + 1; node_idx++) {
+        nc = NodeContainer(n.Get(1), n.Get(node_idx));
+        ndc = p2pInternal.Install(nc);
+        iic = ipv4L.Assign(ndc);
+
+        nc = NodeContainer(n.Get(node_idx), n.Get(numNodesInCenter + 2));
+        ndc = p2pInternal.Install(nc);
+        iic = ipv4R.Assign(ndc);
+    }
+
+    // Add the last link and IP address for the nodes n_k+1 to n_k+2 where
+    // k = numNodesInCenter.
+    // We think of the last node as being an edge node.
+    PointToPointHelper p2pEdge;
+    p2pEdge.SetDeviceAttribute("DataRate", StringValue("15Mbps"));
+    p2pEdge.SetChannelAttribute("Delay", StringValue("10ms"));
+    NodeContainer nL = NodeContainer(n.Get(0), n.Get(1));
+    NodeContainer nR = NodeContainer(n.Get(numNodesInCenter+2), n.Get(numNodesInCenter+3));
+    NetDeviceContainer ndL = p2pEdge.Install(nL);
+    NetDeviceContainer ndR = p2pEdge.Install(nR);
+
     Ipv4AddressHelper ipv4;
     ipv4.SetBase("10.1.1.0", "255.255.255.0");
-    Ipv4InterfaceContainer iAiB = ipv4.Assign(dAdB);
-
-    ipv4.SetBase("10.1.2.0", "255.255.255.0");
-    Ipv4InterfaceContainer iBiC = ipv4.Assign(dBdC);
-
-    ipv4.SetBase("10.1.3.0", "255.255.255.0");
-    Ipv4InterfaceContainer iBiD = ipv4.Assign(dBdD);
-
+    Ipv4InterfaceContainer iiL = ipv4.Assign(ndL);
     ipv4.SetBase("10.1.4.0", "255.255.255.0");
-    Ipv4InterfaceContainer iEiC = ipv4.Assign(dEdC);
-
-    ipv4.SetBase("10.1.5.0", "255.255.255.0");
-    Ipv4InterfaceContainer iEiD = ipv4.Assign(dEdD);
-
-    ipv4.SetBase("10.1.6.0", "255.255.255.0");
-    Ipv4InterfaceContainer iFiE = ipv4.Assign(dFdE);
+    Ipv4InterfaceContainer iiR = ipv4.Assign(ndR);
 
     // Initialize routing database and set up the routing tables in the nodes.
     Ipv4LetFlowRoutingHelper::PopulateRoutingTables();
 
-    // Create an OnOff application to send TCP datagrams at a data rate of
-    // `sendRate` bps
-    uint16_t port = 22;
-    // Send to the interface of F on link EF at port 22.
-    OnOffHelper onoff(
-        "ns3::TcpSocketFactory",
-        Address(InetSocketAddress(iFiE.GetAddress(0), port)));
-    onoff.SetConstantRate(DataRate(sendRate));
-    // Send from node A.
-    ApplicationContainer apps = onoff.Install(nA);
-    apps.Start(Seconds(1.0));
-    apps.Stop(Seconds(endTime));
-
-    // Create a packet sink to receive these packets. It will accept a
-    // connection from any address on port 22.
-    PacketSinkHelper sink(
-        "ns3::TcpSocketFactory",
-        Address(InetSocketAddress(Ipv4Address::GetAny(), port)));
-    apps = sink.Install(nF);
-    apps.Start(Seconds(1.0));
-    apps.Stop(Seconds(endTime));
+    std::vector<std::string> data_rates = {"400kb/s", "500kb/s", "600kb/s"};
+    OnOffPairsHelper pairsHelper(
+        1000, n.Get(0), n.Get(numNodesInCenter + 2),
+        iiR.GetAddress(1), data_rates);
+    pairsHelper.InstallFlows(numSmallFlows, 1.0, 5.0, 10.0);
 
     if (tracing) {
         AsciiTraceHelper ascii;
-        p2p.EnableAsciiAll(ascii.CreateFileStream("outputs/letflow-example/trace.tr"));
-        p2p.EnablePcapAll("outputs/letflow-example/switch");
+        p2pInternal.EnableAsciiAll(ascii.CreateFileStream(
+            "outputs/letflow-example/trace.tr"));
+        p2pInternal.EnablePcapAll("outputs/letflow-example/switch");
     }
 
+    Simulator::Stop(Seconds(11.0));
     Simulator::Run();
-
     Simulator::Destroy();
 
     return 0;
