@@ -112,9 +112,11 @@ bool Ipv4EcmpFlowRouting::RouteInput(Ptr<const Packet> p,
 	NS_LOG_FUNCTION(this << p << header << header.GetSource()
 		<< header.GetDestination() << idev << &lcb << &ecb);
 	// Check if input device supports IP.
-	NS_ASSERT(m_ipv4->GetInterfaceForDevice(idev) >= 0);
 	uint32_t iif = m_ipv4->GetInterfaceForDevice(idev);
+	NS_ASSERT(iif >= 0);
 
+    // Check if it is the intended destination. If so, then we call the
+    // local callback (lcb) to push it up the stack.
 	if (m_ipv4->IsDestinationAddress(header.GetDestination(), iif)) {
 		if (!lcb.IsNull()) {
 			NS_LOG_LOGIC("Local delivery to " << header.GetDestination());
