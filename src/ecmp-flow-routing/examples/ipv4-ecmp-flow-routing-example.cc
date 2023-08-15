@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
     // network infrastructure.
     PointToPointHelper p2pInternal;
     p2pInternal.SetDeviceAttribute("DataRate", StringValue("5Mbps"));
-    p2pInternal.SetChannelAttribute("Delay", StringValue("2ms"));
+    p2pInternal.SetChannelAttribute("Delay", StringValue("50us"));
 
     NodeContainer nc;
     NetDeviceContainer ndc;
@@ -127,7 +127,7 @@ int main(int argc, char* argv[]) {
     // We think of the last node as being an edge node.
     PointToPointHelper p2pEdge;
     p2pEdge.SetDeviceAttribute("DataRate", StringValue("15Mbps"));
-    p2pEdge.SetChannelAttribute("Delay", StringValue("10ms"));
+    p2pEdge.SetChannelAttribute("Delay", StringValue("50us"));
     NodeContainer nL = NodeContainer(n.Get(0), n.Get(1));
     NodeContainer nR = NodeContainer(n.Get(numNodesInCenter+2), n.Get(numNodesInCenter+3));
     NetDeviceContainer ndL = p2pEdge.Install(nL);
@@ -144,7 +144,7 @@ int main(int argc, char* argv[]) {
 
     std::vector<std::string> data_rates = {"400kb/s", "500kb/s", "600kb/s"};
     OnOffPairsHelper pairsHelper(
-        1000, n.Get(0), n.Get(numNodesInCenter + 2),
+        1000, n.Get(0), n.Get(numNodesInCenter + 3),
         iiR.GetAddress(1), data_rates);
     pairsHelper.InstallFlows(numSmallFlows, 1.0, 5.0, 10.0);
 

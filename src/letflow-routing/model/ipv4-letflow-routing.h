@@ -6,6 +6,7 @@
 #include "ns3/ipv4-global-routing.h"
 #include "ns3/ipv4-header.h"
 #include "ns3/ipv4-routing-protocol.h"
+#include "ns3/ipv4-routing-table-entry.h"
 #include "ns3/ipv4-route.h"
 #include "ns3/object.h"
 #include "ns3/packet.h"
@@ -17,7 +18,7 @@
 namespace ns3 {
 
 struct LetFlowFlowlet {
-	uint32_t port;
+	Ptr<Ipv4Route> routeEntry;
 	Time activeTime;
 };
 
@@ -78,11 +79,14 @@ public:
 	std::vector<Ipv4RoutingTableEntry*> LookupLetFlowRoutes(
 		Ipv4Address dst, Ptr<NetDevice> oif = nullptr);
 	
-	Ptr<Ipv4Route> ConstructIpv4Route(uint32_t port, Ipv4Address dstAddress);
+	Ptr<Ipv4Route> ConstructIpv4Route(Ipv4RoutingTableEntry* route);
 
 	void SetFlowletTimeout(Time timeout);
 
 private:
+    /// A uniform random number generator for randomly routing packets among ECMP
+    Ptr<UniformRandomVariable> m_rand;
+    
 	// Flowlet timeout (minimum inter-packet gap denoting different flowlets).
 	Time m_flowletTimeout;
 

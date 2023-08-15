@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
         "ns3::Ipv4GlobalRouting::RandomEcmpRouting", BooleanValue(true));
 
     uint32_t numNodesInCenter = 3;
-    uint16_t flowletTimeoutMs = 100;
+    uint16_t flowletTimeoutUs = 100;
     size_t numSmallFlows = 15;
     bool verbose = false;
     bool tracing = true;
@@ -62,13 +62,13 @@ int main(int argc, char* argv[])
     cmd.AddValue("tracing",
                  "Controls whether tracing is enabled",
                  tracing);
-    cmd.AddValue("flowletTimeoutMs",
-                 "The flowlet timeout in ms",
-                 flowletTimeoutMs);
+    cmd.AddValue("flowletTimeoutUs",
+                 "The flowlet timeout in microseconds",
+                 flowletTimeoutUs);
     cmd.Parse(argc, argv);
 
     Config::SetDefault("ns3::Ipv4LetFlowRouting::FlowletTimeout",
-                       TimeValue(MicroSeconds(flowletTimeoutMs)));
+                       TimeValue(MicroSeconds(flowletTimeoutUs)));
 
     if (verbose) {
         LogComponentEnable("Ipv4LetFlowRouting", LOG_LEVEL_LOGIC);
@@ -93,7 +93,7 @@ int main(int argc, char* argv[])
     // network infrastructure.
     PointToPointHelper p2pInternal;
     p2pInternal.SetDeviceAttribute("DataRate", StringValue("5Mbps"));
-    p2pInternal.SetChannelAttribute("Delay", StringValue("2ms"));
+    p2pInternal.SetChannelAttribute("Delay", StringValue("50us"));
 
     NodeContainer nc;
     NetDeviceContainer ndc;
@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
     // We think of the last node as being an edge node.
     PointToPointHelper p2pEdge;
     p2pEdge.SetDeviceAttribute("DataRate", StringValue("15Mbps"));
-    p2pEdge.SetChannelAttribute("Delay", StringValue("10ms"));
+    p2pEdge.SetChannelAttribute("Delay", StringValue("50us"));
     NodeContainer nL = NodeContainer(n.Get(0), n.Get(1));
     NodeContainer nR = NodeContainer(n.Get(numNodesInCenter+2), n.Get(numNodesInCenter+3));
     NetDeviceContainer ndL = p2pEdge.Install(nL);
@@ -134,7 +134,7 @@ int main(int argc, char* argv[])
 
     std::vector<std::string> data_rates = {"400kb/s", "500kb/s", "600kb/s"};
     OnOffPairsHelper pairsHelper(
-        1000, n.Get(0), n.Get(numNodesInCenter + 2),
+        1000, n.Get(0), n.Get(numNodesInCenter + 3),
         iiR.GetAddress(1), data_rates);
     pairsHelper.InstallFlows(numSmallFlows, 1.0, 5.0, 10.0);
 
