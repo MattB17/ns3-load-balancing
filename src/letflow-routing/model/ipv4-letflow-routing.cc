@@ -23,43 +23,43 @@ NS_LOG_COMPONENT_DEFINE("Ipv4LetFlowRouting");
 NS_OBJECT_ENSURE_REGISTERED(Ipv4LetFlowRouting);
 
 TypeId Ipv4LetFlowRouting::GetTypeId(void) {
-	static TypeId tid = TypeId("ns3::Ipv4LetFlowRouting")
-	    .SetParent<Object>()
-	    .SetGroupName("Internet")
-	    .AddAttribute("FlowletTimeout",
-	    	            "The minimum inter-packet arrival gap to denote a new "
-	    	            "flowlet",
-	    	            TimeValue(MicroSeconds(50)),
-	    	            MakeTimeAccessor(&Ipv4LetFlowRouting::m_flowletTimeout),
-	    	            MakeTimeChecker());
-	return tid;
+	  static TypeId tid = TypeId("ns3::Ipv4LetFlowRouting")
+	      .SetParent<Object>()
+	      .SetGroupName("Internet")
+	      .AddAttribute("FlowletTimeout",
+	    	              "The minimum inter-packet arrival gap to denote a new "
+	    	              "flowlet",
+	    	              TimeValue(MicroSeconds(50)),
+	    	              MakeTimeAccessor(&Ipv4LetFlowRouting::m_flowletTimeout),
+	    	              MakeTimeChecker());
+	  return tid;
 }
 
 // Set the flowlet timeout to 50 microseconds.
 Ipv4LetFlowRouting::Ipv4LetFlowRouting(Ptr<Ipv4GlobalRouting> globalRouting)
-  : m_flowletTimeout(MicroSeconds(50)),
-    m_ipv4(nullptr),
-    m_globalRouting(globalRouting) 
+    : m_flowletTimeout(MicroSeconds(50)),
+      m_ipv4(nullptr),
+      m_globalRouting(globalRouting) 
 {
     NS_LOG_FUNCTION(this);
     m_rand = CreateObject<UniformRandomVariable>();
 }
 
 Ipv4LetFlowRouting::~Ipv4LetFlowRouting() {
-	NS_LOG_FUNCTION(this);
+	  NS_LOG_FUNCTION(this);
 }
 
 Ptr<Ipv4Route> Ipv4LetFlowRouting::RouteOutput(Ptr<Packet> packet,
 	                                           const Ipv4Header& header,
 	                                           Ptr<NetDevice> oif,
 	                                           Socket::SocketErrno& sockerr) {
-	NS_LOG_FUNCTION(this << packet << &header << oif << &sockerr);
-	NS_LOG_LOGIC(this << "Route Output for " << packet);
-	// Delegate to Global Routing. LetFlow is only implemented in the network
-	// and does not extend to the hosts.
-	Ptr<Ipv4Route> rtentry = m_globalRouting->RouteOutput(
-		packet, header, oif, sockerr);
-	return rtentry;
+	  NS_LOG_FUNCTION(this << packet << &header << oif << &sockerr);
+	  NS_LOG_LOGIC(this << "Route Output for " << packet);
+	  // Delegate to Global Routing. LetFlow is only implemented in the network
+	  // and does not extend to the hosts.
+	  Ptr<Ipv4Route> rtentry = m_globalRouting->RouteOutput(
+		    packet, header, oif, sockerr);
+	  return rtentry;
 }
 
 // Receive an input packet on input device `idev`.
@@ -70,206 +70,214 @@ bool Ipv4LetFlowRouting::RouteInput(Ptr<const Packet> p,
 	                                MulticastForwardCallback mcb,
 	                                LocalDeliverCallback lcb,
 	                                ErrorCallback ecb) {
-	NS_LOG_LOGIC(this << " Route Input: " << p << " IP header: " << header);
-	uint32_t iif = m_ipv4->GetInterfaceForDevice(idev);
-	NS_ASSERT(iif >= 0);
+	  NS_LOG_LOGIC(this << " Route Input: " << p << " IP header: " << header);
+	  uint32_t iif = m_ipv4->GetInterfaceForDevice(idev);
+	  NS_ASSERT(iif >= 0);
 
-	// Check if it this is the intended destination. If so then we call the
-	// local callback (lcb) to push it up the stack.
-	if (m_ipv4->IsDestinationAddress(header.GetDestination(), iif)) {
-		  if (!lcb.IsNull()) {
-			    NS_LOG_LOGIC("Local delivery to " << header.GetDestination());
-			    lcb(p, header, iif);
-			    return true;
-		  } else {
-			    // The local delivery callback is null.  This may be a multicast
-          // or broadcast packet, so return false so that another
-          // multicast routing protocol can handle it.
-			    return false;
-		  }
-	}
+	  // Check if it this is the intended destination. If so then we call the
+	  // local callback (lcb) to push it up the stack.
+	  if (m_ipv4->IsDestinationAddress(header.GetDestination(), iif)) {
+		    if (!lcb.IsNull()) {
+			      NS_LOG_LOGIC("Local delivery to " << header.GetDestination());
+			      lcb(p, header, iif);
+			      return true;
+		    } else {
+			      // The local delivery callback is null.  This may be a multicast
+            // or broadcast packet, so return false so that another
+            // multicast routing protocol can handle it.
+			      return false;
+		    }
+	  }
 
-	// LetFlow routing only supports unicast.
-	if (header.GetDestination().IsMulticast() ||
-		  header.GetDestination().IsBroadcast()) {
-		  NS_LOG_ERROR(this <<  " LetFlow routing only supports unicast");
-		  ecb(p, header, Socket::ERROR_NOROUTETOHOST);
-		  return false;
-	}
+	  // LetFlow routing only supports unicast.
+	  if (header.GetDestination().IsMulticast() ||
+		    header.GetDestination().IsBroadcast()) {
+		    NS_LOG_ERROR(this <<  " LetFlow routing only supports unicast");
+		    ecb(p, header, Socket::ERROR_NOROUTETOHOST);
+		    return false;
+	  }
 
-	// Check if the input device supports IP forwarding.
-	if (m_ipv4->IsForwarding(iif) == false) {
-		  NS_LOG_ERROR(this << " Forwarding is disabled for this interface");
-		  ecb(p, header, Socket::ERROR_NOROUTETOHOST);
-		  return false;
-	}
+	  // Check if the input device supports IP forwarding.
+	  if (m_ipv4->IsForwarding(iif) == false) {
+		    NS_LOG_ERROR(this << " Forwarding is disabled for this interface");
+		    ecb(p, header, Socket::ERROR_NOROUTETOHOST);
+		    return false;
+	  }
 
-	// Packet arrival time.
-	Time now = Simulator::Now();
-	std::vector<Ipv4RoutingTableEntry*> routeEntries =
-	    LookupLetFlowRoutes(header.GetDestination());
+	  // Packet arrival time.
+	  Time now = Simulator::Now();
+	  std::vector<Ipv4RoutingTableEntry*> routeEntries =
+	      LookupLetFlowRoutes(header.GetDestination());
+	  // Select a port for the packet.
+    uint32_t selectedPort = 0;
 
-	// Extract the flow ID.
-	uint32_t flowId = 0;
-	FlowIdTag flowIdTag;
-	// Flow ID for the packet.
-	bool flowIdFound = p->PeekPacketTag(flowIdTag);
-	if (!flowIdFound) {
-		  NS_LOG_LOGIC(this << " LetFlow routing cannot extract the flow ID, "
-		  	  << "picking path at random");
-		  return m_globalRouting->RouteInput(p, header, idev, ucb, mcb, lcb, ecb);
-	}
-	// If the flow ID was found, extract it.
-	flowId = flowIdTag.GetFlowId();
-  // Select a port for the packet.
-  uint32_t selectedPort = 0;
+	  // Extract the flow ID.
+	  uint32_t flowId = 0;
+	  FlowIdTag flowIdTag;
+	  // Flow ID for the packet.
+	  bool flowIdFound = p->PeekPacketTag(flowIdTag);
+	  if (!flowIdFound) {
+		    NS_LOG_LOGIC(this << " LetFlow routing cannot extract the flow ID, "
+		  	    << "picking path at random");
+		    Ptr<Ipv4Route> route = ChooseRandomRoute(
+		  	    routeEntries, selectedPort, header.GetDestination());
+	  }
+	  // If the flow ID was found, extract it.
+	  flowId = flowIdTag.GetFlowId();
 
-  // We first examine the flowlet table to see if it is part of an active
-  // flowlet.
-	auto flowletItr = m_flowletTable.find(flowId);
-	// If the flowlet table entry is valid, return the route.
-	if (flowletItr != m_flowletTable.end()) {
-	    // Get the flowlet from the iterator.
-	    LetFlowFlowlet flowlet = flowletItr->second;
-	    // If the interpacket gap is less than the flowlet timeout.
-	    if (now - flowlet.activeTime <= m_flowletTimeout) {
-	    	  NS_LOG_LOGIC(this << " Found active flowlet for " << flowId);
-	    	  // Update the flowlet last active time and get the route.
-	    	  flowlet.activeTime = now;
-          selectedPort = flowlet.port;
+    // We first examine the flowlet table to see if it is part of an active
+    // flowlet.
+	  auto flowletItr = m_flowletTable.find(flowId);
+	  // If the flowlet table entry is valid, return the route.
+	  if (flowletItr != m_flowletTable.end()) {
+	      // Get the flowlet from the iterator.
+	      LetFlowFlowlet flowlet = flowletItr->second;
+	      // If the interpacket gap is less than the flowlet timeout.
+	      if (now - flowlet.activeTime <= m_flowletTimeout) {
+	    	    NS_LOG_LOGIC(this << " Found active flowlet for " << flowId);
+	    	    // Update the flowlet last active time and get the route.
+	    	    flowlet.activeTime = now;
+            selectedPort = flowlet.port;
 
-	    	  // Update the flowlet table.
-	    	  m_flowletTable[flowId] = flowlet;
+	    	    // Update the flowlet table.
+	    	    m_flowletTable[flowId] = flowlet;
 
-          // Construct the route and then call the unicast callback.
-          Ptr<Ipv4Route> route = ConstructIpv4Route(
-          	  selectedPort, header.GetDestination());
-	    	  ucb(route, p, header);
+            // Construct the route and then call the unicast callback.
+            Ptr<Ipv4Route> route = ConstructIpv4Route(
+          	    selectedPort, header.GetDestination());
+	    	    ucb(route, p, header);
 
-	    	  return true;
-	    } else {
-	    	NS_LOG_LOGIC("Flowlet for " << flowId << " timed out. Packet gap: "
-	    		  << now - flowlet.activeTime << " timeout period: "
-	    		  << m_flowletTimeout);
-	    }
-	}
+	    	    return true;
+	      } else {
+	    	    NS_LOG_LOGIC("Flowlet for " << flowId << " timed out. Packet gap: "
+	    		      << now - flowlet.activeTime << " timeout period: "
+	    		      << m_flowletTimeout);
+	      }
+	  }
 
-	// Otherwise, the flowlet either timed out or we don't have a flowlet
-	// entry.
+	  // Otherwise, the flowlet either timed out or we don't have a flowlet
+	  // entry.
 
-	// Return error if there are no routing entries to the destination.
-	if (routeEntries.empty()) {
-	    NS_LOG_ERROR(this << " LetFlow routing cannot find routing entry");
-	    ecb(p, header, Socket::ERROR_NOROUTETOHOST);
-	    return false;
-	}
+	  // Return error if there are no routing entries to the destination.
+	  if (routeEntries.empty()) {
+	      NS_LOG_ERROR(this << " LetFlow routing cannot find routing entry");
+	      ecb(p, header, Socket::ERROR_NOROUTETOHOST);
+	      return false;
+	  }
 
-	// Otherwise, there is a route so we need to decide through which port we
-	// should forward the packet.
-	uint32_t selectedIdx = m_rand->GetInteger(0, routeEntries.size() - 1);
-	NS_LOG_LOGIC(this << " Creating new flowlet for " << flowId
-		  << " selected route number: " << selectedIdx);
-	selectedPort = routeEntries.at(selectedIdx)->GetInterface();
-	// Construct the route.
-	Ptr<Ipv4Route> route = ConstructIpv4Route(
-		  selectedPort, header.GetDestination());
+	  // Otherwise, there is a route so we need to decide through which port we
+	  // should forward the packet.
+	  Ptr<Ipv4Route> route = ChooseRandomRoute(
+		    routeEntries, selectedPort, header.GetDestination());
+	  NS_LOG_LOGIC(this << " Creating new flowlet for " << flowId
+		    << " selected rport: " << selectedPort);
 
-	// Construct the flowlet and route.
-	LetFlowFlowlet flowlet;
-	flowlet.port = selectedPort;
-	flowlet.activeTime = now;
-	// Update the flowlet table.
-	m_flowletTable[flowId] = flowlet;
+	  // Construct the flowlet and route.
+	  LetFlowFlowlet flowlet;
+	  flowlet.port = selectedPort;
+	  flowlet.activeTime = now;
+	  // Update the flowlet table.
+	  m_flowletTable[flowId] = flowlet;
 
-	ucb(route, p, header);
-	return true;
+	  ucb(route, p, header);
+	  return true;
+}
+
+Ptr<Ipv4Route>
+Ipv4LetFlowRouting::ChooseRandomRoute(
+	  std::vector<Ipv4RoutingTableEntry*>& routeEntries,
+	  uint32_t& selectedPort, Ipv4Address dstAddr) {
+	  NS_LOG_FUNCTION(this << dstAddr);
+	  uint32_t selectedIdx = m_rand->GetInteger(0, routeEntries.size() - 1);
+	  selectedPort = routeEntries.at(selectedIdx)->GetInterface();
+	  return ConstructIpv4Route(selectedPort, dstAddr);
 }
 
 void Ipv4LetFlowRouting::NotifyInterfaceUp(uint32_t interface) {
-	m_globalRouting->NotifyInterfaceUp(interface);
+	  m_globalRouting->NotifyInterfaceUp(interface);
 }
 
 void Ipv4LetFlowRouting::NotifyInterfaceDown(uint32_t interface) {
-	m_globalRouting->NotifyInterfaceDown(interface);
+	  m_globalRouting->NotifyInterfaceDown(interface);
 }
 
 void Ipv4LetFlowRouting::NotifyAddAddress(
-	uint32_t interface, Ipv4InterfaceAddress address) {
-	m_globalRouting->NotifyAddAddress(interface, address);
+	  uint32_t interface, Ipv4InterfaceAddress address) {
+	  m_globalRouting->NotifyAddAddress(interface, address);
 }
 
 void Ipv4LetFlowRouting::NotifyRemoveAddress(
-	uint32_t interface, Ipv4InterfaceAddress address) {
-	m_globalRouting->NotifyRemoveAddress(interface, address);
+	  uint32_t interface, Ipv4InterfaceAddress address) {
+	  m_globalRouting->NotifyRemoveAddress(interface, address);
 }
 
 // Set the IPv4 address.
 void Ipv4LetFlowRouting::SetIpv4(Ptr<Ipv4> ipv4) {
-	NS_LOG_LOGIC(this << " Setting up IPv4: " << ipv4);
-	NS_ASSERT(m_ipv4 == nullptr && ipv4 != nullptr);
-	m_ipv4 = ipv4;
-	m_globalRouting->SetIpv4(ipv4);
+	  NS_LOG_LOGIC(this << " Setting up IPv4: " << ipv4);
+	  NS_ASSERT(m_ipv4 == nullptr && ipv4 != nullptr);
+	  m_ipv4 = ipv4;
+	  m_globalRouting->SetIpv4(ipv4);
 }
 
 void Ipv4LetFlowRouting::PrintRoutingTable(Ptr<OutputStreamWrapper> stream,
 	                                       Time::Unit unit) const {
-	m_globalRouting->PrintRoutingTable(stream, unit);
+	  m_globalRouting->PrintRoutingTable(stream, unit);
 }
 
 void Ipv4LetFlowRouting::DoDispose(void) {
-	NS_LOG_FUNCTION(this);
-	m_ipv4 = nullptr;
-	m_globalRouting->DoDispose();
-	m_globalRouting = nullptr;
+	  NS_LOG_FUNCTION(this);
+	  m_ipv4 = nullptr;
+	  m_globalRouting->DoDispose();
+	  m_globalRouting = nullptr;
 }
 
 uint32_t Ipv4LetFlowRouting::GetNRoutes() const {
-	NS_LOG_FUNCTION(this);
-	return m_globalRouting->GetNRoutes();
+	  NS_LOG_FUNCTION(this);
+	  return m_globalRouting->GetNRoutes();
 }
 
 Ipv4RoutingTableEntry* Ipv4LetFlowRouting::GetRoute(uint32_t i) const {
-	NS_LOG_FUNCTION(this << " " << i);
-	return m_globalRouting->GetRoute(i);
+	  NS_LOG_FUNCTION(this << " " << i);
+	  return m_globalRouting->GetRoute(i);
 }
 
 std::vector<Ipv4RoutingTableEntry*>
 Ipv4LetFlowRouting::LookupLetFlowRoutes(Ipv4Address dst, Ptr<NetDevice> oif) {
-	NS_LOG_FUNCTION(this  << dst  << oif);
-	return m_globalRouting->GetRoutesToDst(dst, oif);
+	  NS_LOG_FUNCTION(this  << dst  << oif);
+	  return m_globalRouting->GetRoutesToDst(dst, oif);
 }
 
 Ptr<Ipv4Route>
 Ipv4LetFlowRouting::ConstructIpv4Route(uint32_t port, Ipv4Address dstAddr) {
 	  // Port and channel to send from on this router.
-	Ptr<NetDevice> dev = m_ipv4->GetNetDevice(port);
-	Ptr<Channel> channel = dev->GetChannel();
+	  Ptr<NetDevice> dev = m_ipv4->GetNetDevice(port);
+	  Ptr<Channel> channel = dev->GetChannel();
 
-	// Get the device on the other end of the channel to get the gateway for the
-	// route. There should be two devices attached to the channel at indices 0
-	// and 1. dev is the one we send through, so we want the other one. If the
-	// device at index 0 is dev then pick index 1, otherwise pick index 0.
-	uint32_t otherEnd = (channel->GetDevice(0) == dev) ? 1 : 0;
-	// Get the node and interface to send to at the next hop.
-	Ptr<Node> nextHop = channel->GetDevice(otherEnd)->GetNode();
-	// Interface index.
-	uint32_t nextIf = channel->GetDevice(otherEnd)->GetIfIndex();
-	// Lastly, recover the IP Address of the next hop.
-	Ipv4Address nextHopAddr =
-	    nextHop->GetObject<Ipv4>()->GetAddress(nextIf, 0).GetLocal();
+	  // Get the device on the other end of the channel to get the gateway for the
+	  // route. There should be two devices attached to the channel at indices 0
+	  // and 1. dev is the one we send through, so we want the other one. If the
+	  // device at index 0 is dev then pick index 1, otherwise pick index 0.
+	  uint32_t otherEnd = (channel->GetDevice(0) == dev) ? 1 : 0;
+	  // Get the node and interface to send to at the next hop.
+	  Ptr<Node> nextHop = channel->GetDevice(otherEnd)->GetNode();
+	  // Interface index.
+	  uint32_t nextIf = channel->GetDevice(otherEnd)->GetIfIndex();
+	  // Lastly, recover the IP Address of the next hop.
+	  Ipv4Address nextHopAddr =
+	      nextHop->GetObject<Ipv4>()->GetAddress(nextIf, 0).GetLocal();
 
-	// Construct the route. Note the route just tells the router what the
-	// next hop to send to is given the destination.
-	Ptr<Ipv4Route> route = Create<Ipv4Route>();
-	route->SetOutputDevice(dev);
-	route->SetGateway(nextHopAddr);
-	route->SetSource(m_ipv4->GetAddress(port, 0).GetLocal());
-	route->SetDestination(dstAddr);
-	return route;
+	  // Construct the route. Note the route just tells the router what the
+	  // next hop to send to is given the destination.
+	  Ptr<Ipv4Route> route = Create<Ipv4Route>();
+	  route->SetOutputDevice(dev);
+	  route->SetGateway(nextHopAddr);
+	  route->SetSource(m_ipv4->GetAddress(port, 0).GetLocal());
+	  route->SetDestination(dstAddr);
+	  return route;
 }
 
 void Ipv4LetFlowRouting::SetFlowletTimeout(Time timeout) {
-	m_flowletTimeout = timeout;
+	  m_flowletTimeout = timeout;
 }
 
 }  // namespace ns3

@@ -77,12 +77,46 @@ public:
 	 */
 	std::vector<Ipv4RoutingTableEntry*> LookupLetFlowRoutes(
 		Ipv4Address dst, Ptr<NetDevice> oif = nullptr);
-	
-	Ptr<Ipv4Route> ConstructIpv4Route(uint32_t port, Ipv4Address dstAddr);
 
+    /**
+     * \brief sets the timeout period for flowlets.
+     * 
+     * Whenever the time between two consecutive packets exceeds the flowlet
+     * timeout, a new flowlet is created.
+     * 
+     * \param timeout the length of time for the flowlet timeout.
+     */
 	void SetFlowletTimeout(Time timeout);
 
 private:
+	/**
+	 * \brief chooses a route to the destination at random.
+	 * 
+	 * This function is called when either we have a packet with no flow ID
+	 * (ie. an error or control packet), or if a flowlet timed out and we
+	 * need to choose a new route for the flow.
+	 * 
+	 * \param routeEntries the set of routes to the destination.
+	 * \param selectedPort the port which will be selected to send the packet.
+	 * \param dstAddr the address of the destination for the flow.
+	 * 
+	 * \returns Ptr<IpvRoute> chosen to the destination.
+	 */
+    Ptr<Ipv4Route> ChooseRandomRoute(
+    	std::vector<Ipv4RoutingTableEntry*>& routeEntries,
+    	uint32_t& selectedPort, Ipv4Address dstAddr);
+
+    /**
+     * \brief constructs a route to the destination.
+     * 
+     * \param port the port from which the route will send packets.
+     * \param dstAddr the destination address for the route.
+     * 
+     * \returns Ptr<Ipv4Route> from the chosen port to the destination.
+     */
+    Ptr<Ipv4Route> ConstructIpv4Route(uint32_t port, Ipv4Address dstAddr);
+
+
     /// A uniform random number generator for randomly routing packets among ECMP
     Ptr<UniformRandomVariable> m_rand;
 
