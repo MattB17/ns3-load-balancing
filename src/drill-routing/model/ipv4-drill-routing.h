@@ -1,10 +1,15 @@
 #ifndef IPV4_DRILL_ROUTING_H
 #define IPV4_DRILL_ROUTING_H
 
-// Add a doxygen group for this module.
-// If you have more than one file, this should be in only one of them.
 /**
- * \defgroup drill-routing Description of the drill-routing
+ * \defgroup drill-routing Load balancing with DRILL.
+ * 
+ * This section documents the API of the DRILL load balancing module. This
+ * module uses DRILL to balance flows by making routing choices on a per
+ * packet basis. It does so by keeping track of the least congested links.
+ * Then at each decision point it randomly samples two links and takes the
+ * previously least congested link. Among the three, whichever has the
+ * smallest queue is chosen as the gateway to send the packet.
  */
 
 namespace ns3
