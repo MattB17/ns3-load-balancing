@@ -26,6 +26,10 @@ build_lib(
     HEADER_FILES ${header_files}
     LIBRARIES_TO_LINK
       ${libcore}
+      ${libinternet}
+      ${libnetwork}
+      ${libpoint-to-point}
+      ${libtraffic-control}
     TEST_SOURCES test/ipv4-drill-routing-test-suite.cc
                  ${examples_as_tests_sources}
 )
