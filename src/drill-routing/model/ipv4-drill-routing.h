@@ -5,6 +5,7 @@
 #include "ns3/ipv4-global-routing.h"
 #include "ns3/ipv4-header.h"
 #include "ns3/ipv4-routing-protocol.h"
+#include "ns3/ipv4-routing-table-entry.h"
 #include "ns3/ipv4-route.h"
 #include "ns3/object.h"
 #include "ns3/packet.h"
@@ -31,14 +32,52 @@ namespace ns3
  * 
  * \brief DRILL routing protocol for IPv4 stacks.
  */
-class Ipv4DrillRouting {
+class Ipv4DrillRouting : public Ipv4RoutingProtocol {
 public:
     Ipv4DrillRouting(Ptr<Ipv4GlobalRouting> globalRouting);
     ~Ipv4DrillRouting();
 
     static TypeId GetTypeId();
 
-    virtual void DoDispose();
+    // Inherited from Ipv4RoutingProtocol.
+    virtual Ptr<Ipv4Route> RouteOutput(Ptr<Packet> p,
+                                       const Ipv4Header& header,
+                                       Ptr<NetDevice> oif,
+                                       Socket::SocketErrno& sockerr) override;
+    virtual bool RouteInput(Ptr<const Packet> p,
+                            const Ipv4Header& header,
+                            Ptr<const NetDevice> idev,
+                            UnicastForwardCallback ucb,
+                            MulticastForwardCallback mcb,
+                            LocalDeliverCallback lcb,
+                            ErrorCallback ecb) override;
+    virtual void NotifyInterfaceUp(uint32_t interface) override;
+    virtual void NotifyInterfaceDown(uint32_t interface) override;
+    virtual void NotifyAddAddress(uint32_t interface,
+                                  Ipv4InterfaceAddress address) override;
+    virtual void NotifyRemoveAddress(uint32_t interface,
+                                     Ipv4InterfaceAddress address) override;
+    virtual void SetIpv4(Ptr<Ipv4> ipv4) override;
+    virtual void PrintRoutingTable(Ptr<OutputStreamWrapper> stream,
+                                   Time::Unit unit = Time::S) const override;
+
+    /**
+     * \brief Get the number of individual unicast routes that have been added
+     * to the routing table.
+     */
+    uint32_t GetNRoutes() const;
+
+    /**
+     * \brief Get a route from the unicast routing table.
+     * 
+     * \param i The index (into the routing table) of the route to retrieve.
+     * 
+     * \return If the route is set, a pointer to that Ipv4RoutingTableEntry
+     * is returned. Otherwise, nullptr is returned.
+     */
+    Ipv4RoutingTableEntry* GetRoute(uint32_t i) const;
+
+    virtual void DoDispose() override;
 private:
     /**
      * \brief Lookup in the DRILL forwarding table for the destination.
