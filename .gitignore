@@ -4,6 +4,8 @@ outputs/
 *.tr
 *.pcap
 *.dat
+*.project
+*.cproject
 .vscode/
 .DS_Store
 .clang-format
