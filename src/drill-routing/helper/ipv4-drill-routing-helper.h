@@ -9,6 +9,7 @@ namespace ns3
 {
 
 class Ipv4DrillRoutingHelper : public Ipv4RoutingHelper {
+public:
 	/**
 	 * \brief Construct a DrillRoutingHelper to more easily manage DRILL
 	 * routing.

@@ -26,7 +26,7 @@ NS_LOG_COMPONENT_DEFINE("Ipv4LetFlowRoutingTestSuite");
  * \ingroup letflow-routing
  * \ingroup tests
  * 
- * This test suite tests the operation of per flow ECMP routing on a few
+ * This test suite tests the operation of per LetFlow routing on a few
  * sample networks to ensure that routes are built correctly.
  * 
  * Link test:
@@ -93,12 +93,12 @@ void LinkTest::DoRun() {
   Ptr<Ipv4LetFlowRouting> letflowRouting0 =
       routing0->GetObject<Ipv4LetFlowRouting>();
   NS_TEST_ASSERT_MSG_NE(
-    letflowRouting0, nullptr, "Error -- no Ipv4EcmpFlowRouting object");
+    letflowRouting0, nullptr, "Error -- no Ipv4LetFlowRouting object");
   Ptr<Ipv4RoutingProtocol> routing1 = ip1->GetRoutingProtocol();
   Ptr<Ipv4LetFlowRouting> letflowRouting1 =
       routing1->GetObject<Ipv4LetFlowRouting>();
   NS_TEST_ASSERT_MSG_NE(
-    letflowRouting1, nullptr, "Error -- no Ipv4EcmpFlowRouting object");
+    letflowRouting1, nullptr, "Error -- no Ipv4LetFlowRouting object");
 
   // Test that the right number of routes have been found.
   uint32_t nRoutes0 = letflowRouting0->GetNRoutes();
