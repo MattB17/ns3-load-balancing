@@ -62,16 +62,24 @@ int main(int argc, char* argv[]) {
 
     uint32_t numNodesInCenter = 3;
     size_t numSmallFlows = 15;
+    double flowStartTime = 1.0;
+    double flowEndTime = 10.0;
     bool verbose = false;
     bool tracing = true;
 
     CommandLine cmd;
-    cmd.AddValue("numNodesInCenter", 
+    cmd.AddValue("numNodesInCenter",
                  "Number of nodes in each level of the topology",
                  numNodesInCenter);
     cmd.AddValue("numSmallFlows",
                  "number of small flows to start in the simulation",
                  numSmallFlows);
+    cmd.AddValue("flowStartTime",
+                 "The earliest time at which a flow can be sent",
+                 flowStartTime);
+    cmd.AddValue("flowEndTime",
+                 "The time at which all flows must end",
+                 flowEndTime);
     cmd.AddValue("verbose",
                  "Controls whether logging is enabled",
                  verbose);
@@ -99,10 +107,14 @@ int main(int argc, char* argv[]) {
     Ipv4AddressHelper ipv4R;
     ipv4R.SetBase("10.1.3.0", "255.255.255.0");
 
-    // We think of every node other than the last as being part of the core
-    // network infrastructure.
+    int internalLinkRate = 5;
+    int edgeLinkRate = internalLinkRate * numNodesInCenter;
+
+    // We think of every node other than the first and last as being part of the
+    // core network infrastructure.
     PointToPointHelper p2pInternal;
-    p2pInternal.SetDeviceAttribute("DataRate", StringValue("5Mbps"));
+    p2pInternal.SetDeviceAttribute("DataRate", StringValue(
+      std::to_string(internalLinkRate) + "Mbps"));
     p2pInternal.SetChannelAttribute("Delay", StringValue("50us"));
 
     NodeContainer nc;
@@ -126,7 +138,8 @@ int main(int argc, char* argv[]) {
     // k = numNodesInCenter.
     // We think of the last node as being an edge node.
     PointToPointHelper p2pEdge;
-    p2pEdge.SetDeviceAttribute("DataRate", StringValue("15Mbps"));
+    p2pEdge.SetDeviceAttribute("DataRate", StringValue(
+      std::to_string(edgeLinkRate) + "Mbps"));
     p2pEdge.SetChannelAttribute("Delay", StringValue("50us"));
     NodeContainer nL = NodeContainer(n.Get(0), n.Get(1));
     NodeContainer nR = NodeContainer(n.Get(numNodesInCenter+2), n.Get(numNodesInCenter+3));
@@ -146,7 +159,10 @@ int main(int argc, char* argv[]) {
     OnOffPairsHelper pairsHelper(
         1000, n.Get(0), n.Get(numNodesInCenter + 3),
         iiR.GetAddress(1), data_rates);
-    pairsHelper.InstallFlows(numSmallFlows, 1.0, 5.0, 10.0);
+    double flowLaunchEndTime = (
+      (flowEndTime - flowStartTime) / 2) + flowStartTime;
+    pairsHelper.InstallFlows(
+      numSmallFlows, flowStartTime, flowLaunchEndTime, flowEndTime);
 
     if (tracing) {
         AsciiTraceHelper ascii;
@@ -155,7 +171,7 @@ int main(int argc, char* argv[]) {
         p2pInternal.EnablePcapAll("outputs/flow-level-ecmp-example/switch");
     }
 
-    Simulator::Stop(Seconds(11.0));
+    Simulator::Stop(Seconds(flowEndTime + 1.0));
     Simulator::Run();
     Simulator::Destroy();
 

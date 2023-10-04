@@ -3,3 +3,11 @@ Running fat-tree example:
 
 Running letflow example:
 * `./ns3 run  "ipv4-letflow-routing-example --verbose=true --tracing=true --numSmallFlows=1"`
+
+Build
+* `./ns3 clean`
+* `./ns3 configure --build-profile=debug --enable-examples --enable-tests`
+* `./ns3 build`
+
+TcpDump
+* `tcpdump -nn -tt -r <filename>.pcap`
