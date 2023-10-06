@@ -49,6 +49,7 @@ Ptr<Ipv4Route> Ipv4DrillRouting::RouteOutput(Ptr<Packet> packet,
 	                                         Ptr<NetDevice> oif,
 	                                         Socket::SocketErrno& sockerr) {
     NS_LOG_FUNCTION(this << packet << &header << oif << &sockerr);
+    NS_LOG_LOGIC(this << "Route Output for " << packet);
     // Delegate to Global Routing. DRILL is only implemented in the network
     // and does not extend to the hosts.
     Ptr<Ipv4Route> rtentry = m_globalRouting->RouteOutput(
@@ -67,7 +68,7 @@ bool Ipv4DrillRouting::RouteInput(Ptr<const Packet> p,
     NS_LOG_LOGIC(this << " Route Input: " << p << "IP header: " << header);
     uint32_t iif = m_ipv4->GetInterfaceForDevice(idev);
     NS_ASSERT(iif >= 0);
-    
+
     // Check if it is the intended destination. If so, then we call the local
     // callback (lcb) to push it up the stack.
     if (m_ipv4->IsDestinationAddress(header.GetDestination(), iif)) {
@@ -82,7 +83,7 @@ bool Ipv4DrillRouting::RouteInput(Ptr<const Packet> p,
             return false;
         }
     }
-    
+
     // DRILL only supports unicast.
     if (header.GetDestination().IsMulticast() ||
         header.GetDestination().IsBroadcast()) {
@@ -90,14 +91,14 @@ bool Ipv4DrillRouting::RouteInput(Ptr<const Packet> p,
         ecb(p, header, Socket::ERROR_NOROUTETOHOST);
         return false;
     }
-    
+
     // Check if the input device supports IP forwarding.
     if (m_ipv4->IsForwarding(iif) == false) {
         NS_LOG_ERROR(this << " Forwarding is disabled for this interface");
         ecb(p, header, Socket::ERROR_NOROUTETOHOST);
         return false;
     }
-    
+
     std::vector<Ipv4RoutingTableEntry*> allRoutes = LookupDrillRoutes(
         header.GetDestination());
     if (allRoutes.empty()) {
@@ -106,27 +107,34 @@ bool Ipv4DrillRouting::RouteInput(Ptr<const Packet> p,
         ecb(p, header, Socket::ERROR_NOROUTETOHOST);
         return false;
     }
-    
+
     // Used to keep track of the least loaded interface.
     uint32_t leastLoadedInterface = 0;
     uint32_t leastLoad = std::numeric_limits<uint32_t>::max();
-    
-    // Shuffle so that we can randomly sample `m_d` ports.
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(allRoutes.begin(), allRoutes.end(), g);
-    
+
+
     // We start by checking the previously least loaded port.
-    auto itr = m_previousBestQueueMap.find(header.GetDestination());
-    if (itr != m_previousBestQueueMap.end()) {
+    if (m_d < allRoutes.size()) {
+      // Note if m_d >= allRoutes.size() then we will go through all routes,
+      // so no need to do it twice.
+      auto itr = m_previousBestQueueMap.find(header.GetDestination());
+      if (itr != m_previousBestQueueMap.end()) {
         leastLoadedInterface = itr->second;
         leastLoad = CalculateQueueLength(itr->second);
+      }
     }
-    
+
     // If we have at least `m_d` routes, then we sample `m_d`. Otherwise, we
     // sample all.
     uint32_t sampleNum = m_d < allRoutes.size() ? m_d : allRoutes.size();
-    
+    // Only shuffle if m_d < allRoutes.size().
+    if (m_d < allRoutes.size()) {
+      // Shuffle so that we can randomly sample `m_d` ports.
+      std::random_device rd;
+      std::mt19937 g(rd());
+      std::shuffle(allRoutes.begin(), allRoutes.end(), g);
+    }
+
     // We've already randomly shuffled so we can just go through the first
     // `sample_num` entries in the shuffled array.
     for (uint32_t samplePort = 0; samplePort < sampleNum; samplePort++) {
@@ -137,11 +145,11 @@ bool Ipv4DrillRouting::RouteInput(Ptr<const Packet> p,
             leastLoadedInterface = allRoutes[samplePort]->GetInterface();
         }
     }
-    
-    NS_LOG_LOGIC(this << " Drill routing choses interface: "
+
+    NS_LOG_LOGIC(this << " Drill routing chose interface: "
                  << leastLoadedInterface << ", since its load is: "
                  << leastLoad);
-    
+
     m_previousBestQueueMap[header.GetDestination()] = leastLoadedInterface;
     Ptr<Ipv4Route> route = ConstructIpv4Route(leastLoadedInterface,
                                               header.GetDestination());
@@ -224,12 +232,16 @@ uint32_t Ipv4DrillRouting::CalculateQueueLength(uint32_t interface) {
 	Ptr<TrafficControlLayer> tc =
 	    ipv4L3Protocol->GetObject<TrafficControlLayer>();
 	if (!tc) {
+    NS_LOG_LOGIC("Calculate queue length for " << interface
+        << " as " << queueLength << ". No Traffic Control Layer");
 		return queueLength;
 	}
 	Ptr<QueueDisc> queueDisc = tc->GetRootQueueDiscOnDevice(netDevice);
 	if (queueDisc) {
 		queueLength += queueDisc->GetNBytes();
 	}
+  NS_LOG_LOGIC("Calculate queue length for " << interface
+      << " as " << queueLength);
 	return queueLength;
 }
 
