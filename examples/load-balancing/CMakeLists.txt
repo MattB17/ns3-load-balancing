@@ -21,7 +21,9 @@ build_example(
     ${libapplications}
     ${libcore}
     ${libdrill-routing}
+    ${libecmp-flow-routing}
     ${libflow-monitor}
     ${libinternet}
+    ${libletflow-routing}
     ${libpoint-to-point}
 )

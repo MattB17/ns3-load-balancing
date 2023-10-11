@@ -3,7 +3,9 @@
 #include "ns3/flow-monitor-helper.h"
 #include "ns3/internet-module.h"
 #include "ns3/ipv4-drill-routing-helper.h"
+#include "ns3/ipv4-ecmp-flow-routing-helper.h"
 #include "ns3/ipv4-global-routing-helper.h"
+#include "ns3/ipv4-letflow-routing-helper.h"
 #include "ns3/network-module.h"
 #include "ns3/on-off-pairs-helper.h"
 #include "ns3/point-to-point-module.h"
@@ -33,6 +35,76 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("SimpleParallelPathsExample");
 
+void SetLogging(LbScheme lbScheme) {
+  switch (lbScheme) {
+    case LbScheme::ECMP:
+      LogComponentEnable("Ipv4EcmpFlowRouting", LOG_LEVEL_LOGIC);
+      break;
+    case LbScheme::DRILL:
+      LogComponentEnable("Ipv4DrillRouting", LOG_LEVEL_LOGIC);
+      break;
+    case LbScheme::LETFLOW:
+      LogComponentEnable("Ipv4LetFlowRouting", LOG_LEVEL_LOGIC);
+      break;
+    default:
+      LogComponentEnable("Ipv4GlobalRouting", LOG_LEVEL_LOGIC);
+  }
+}
+
+InternetStackHelper ConfigureLoadBalancing(LbScheme lbScheme,
+                                           uint32_t drillSampleSize,
+                                           uint16_t flowletTimeoutUs) {
+  InternetStackHelper internet;
+  switch (lbScheme) {
+    case LbScheme::ECMP:
+      {
+        Ipv4EcmpFlowRoutingHelper ecmpFlowRouting;
+        internet.SetRoutingHelper(ecmpFlowRouting);
+        break;
+      }
+    case LbScheme::DRILL:
+      {
+        Config::SetDefault("ns3::Ipv4DrillRouting::d",
+                           UintegerValue(drillSampleSize));
+        Ipv4DrillRoutingHelper drillRouting;
+        internet.SetRoutingHelper(drillRouting);
+        break;
+      }
+    case LbScheme::LETFLOW:
+      {
+        Config::SetDefault("ns3::Ipv4LetFlowRouting::FlowletTimeout",
+                           TimeValue(MicroSeconds(flowletTimeoutUs)));
+        Ipv4LetFlowRoutingHelper letFlowRouting;
+        internet.SetRoutingHelper(letFlowRouting);
+        break;
+      }
+    default:
+      {
+        Ipv4GlobalRoutingHelper globalRouting;
+        internet.SetRoutingHelper(globalRouting);
+        break;
+      }
+  }
+  return internet;
+}
+
+void PopulateRoutingTables(LbScheme lbScheme) {
+  switch (lbScheme) {
+    case LbScheme::ECMP:
+      Ipv4EcmpFlowRoutingHelper::PopulateRoutingTables();
+      break;
+    case LbScheme::DRILL:
+      Ipv4DrillRoutingHelper::PopulateRoutingTables();
+      break;
+    case LbScheme::LETFLOW:
+      Ipv4LetFlowRoutingHelper::PopulateRoutingTables();
+      break;
+    default:
+      Ipv4GlobalRoutingHelper::PopulateRoutingTables();
+      break;
+  }
+}
+
 int main(int argc, char* argv[]) {
   LogComponentEnable("SimpleParallelPathsExample", LOG_LEVEL_INFO);
 
@@ -57,7 +129,8 @@ int main(int argc, char* argv[]) {
 
   // Load balancing specific variables.
   std::string loadBalancingScheme = "drill";
-  uint32_t drillSampleSize = 2;  // Used for DRILL
+  uint32_t drillSampleSize = 2;  // Used for DRILL.
+  uint16_t flowletTimeoutUs = 100; // Used for flowlet based schemes.
 
   CommandLine cmd;
   // Experiment configuration variables exposed on the command line.
@@ -88,20 +161,23 @@ int main(int argc, char* argv[]) {
     "drillSampleSize",
     "The number of ports DRILL samples when making per packet choices",
     drillSampleSize);
+  cmd.AddValue("flowletTimeoutUs",
+               "The flowlet timeout in microseconds",
+               flowletTimeoutUs);
+
   cmd.Parse(argc, argv);
 
   LbScheme lbScheme = StringToLbScheme(loadBalancingScheme);
+  // converting it back to string to standardize naming.
+  loadBalancingScheme = LbSchemeToString(lbScheme);
 
   if (lbScheme == LbScheme::UNKNOWN) {
     NS_LOG_ERROR("Must specify a valid load balancing scheme");
     return -1;
   }
 
-  Config::SetDefault("ns3::Ipv4DrillRouting::d",
-                     UintegerValue(drillSampleSize));
-
   if (verbose) {
-    LogComponentEnable("Ipv4DrillRouting", LOG_LEVEL_LOGIC);
+    SetLogging(lbScheme);
   }
 
   // Create the nodes and links them together.
@@ -109,9 +185,8 @@ int main(int argc, char* argv[]) {
   // Number of nodes in center plus two nodes on each side.
   n.Create(numNodesInCenter + 4);
 
-  Ipv4DrillRoutingHelper drillRouting;
-  InternetStackHelper internet;
-  internet.SetRoutingHelper(drillRouting);
+  InternetStackHelper internet = ConfigureLoadBalancing(
+    lbScheme, drillSampleSize, flowletTimeoutUs);
   internet.Install(n);
 
   Ipv4AddressHelper ipv4L;
@@ -167,7 +242,7 @@ int main(int argc, char* argv[]) {
   Ipv4InterfaceContainer iiR = ipv4.Assign(ndR);
 
   // Initialize routing database and set up the routing tables in the nodes.
-  Ipv4DrillRoutingHelper::PopulateRoutingTables();
+  PopulateRoutingTables(lbScheme);
 
   std::vector<std::string> data_rates = {"400kb/s", "500kb/s", "600kb/s"};
   // iiR.GetAddress(1) retrieves the 2nd interface on the last link from
@@ -181,10 +256,12 @@ int main(int argc, char* argv[]) {
 		numSmallFlows, flowStartTime, flowLaunchEndTime, flowEndTime);
 
   if (tracing) {
+    std::string lbDir =
+      "outputs/simple-parallel-paths/" + loadBalancingScheme + "/";
     AsciiTraceHelper ascii;
     p2pInternal.EnableAsciiAll(ascii.CreateFileStream(
-      "outputs/drill-example/trace.tr"));
-    p2pInternal.EnablePcapAll("outputs/drill-example/switch");
+      lbDir + "trace.tr"));
+    p2pInternal.EnablePcapAll(lbDir + "switch");
   }
 
   Simulator::Stop(Seconds(flowEndTime + 1.0));
