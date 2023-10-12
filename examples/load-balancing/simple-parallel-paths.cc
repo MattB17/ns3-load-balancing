@@ -2,15 +2,12 @@
 #include "ns3/core-module.h"
 #include "ns3/flow-monitor-helper.h"
 #include "ns3/internet-module.h"
-#include "ns3/ipv4-drill-routing-helper.h"
-#include "ns3/ipv4-ecmp-flow-routing-helper.h"
-#include "ns3/ipv4-global-routing-helper.h"
-#include "ns3/ipv4-letflow-routing-helper.h"
 #include "ns3/network-module.h"
 #include "ns3/on-off-pairs-helper.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/nstime.h"
 
+#include "lb-utils.h"
 #include "load-balancing-scheme.h"
 
 #include <string>
@@ -34,76 +31,6 @@
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("SimpleParallelPathsExample");
-
-void SetLogging(LbScheme lbScheme) {
-  switch (lbScheme) {
-    case LbScheme::ECMP:
-      LogComponentEnable("Ipv4EcmpFlowRouting", LOG_LEVEL_LOGIC);
-      break;
-    case LbScheme::DRILL:
-      LogComponentEnable("Ipv4DrillRouting", LOG_LEVEL_LOGIC);
-      break;
-    case LbScheme::LETFLOW:
-      LogComponentEnable("Ipv4LetFlowRouting", LOG_LEVEL_LOGIC);
-      break;
-    default:
-      LogComponentEnable("Ipv4GlobalRouting", LOG_LEVEL_LOGIC);
-  }
-}
-
-InternetStackHelper ConfigureLoadBalancing(LbScheme lbScheme,
-                                           uint32_t drillSampleSize,
-                                           uint16_t flowletTimeoutUs) {
-  InternetStackHelper internet;
-  switch (lbScheme) {
-    case LbScheme::ECMP:
-      {
-        Ipv4EcmpFlowRoutingHelper ecmpFlowRouting;
-        internet.SetRoutingHelper(ecmpFlowRouting);
-        break;
-      }
-    case LbScheme::DRILL:
-      {
-        Config::SetDefault("ns3::Ipv4DrillRouting::d",
-                           UintegerValue(drillSampleSize));
-        Ipv4DrillRoutingHelper drillRouting;
-        internet.SetRoutingHelper(drillRouting);
-        break;
-      }
-    case LbScheme::LETFLOW:
-      {
-        Config::SetDefault("ns3::Ipv4LetFlowRouting::FlowletTimeout",
-                           TimeValue(MicroSeconds(flowletTimeoutUs)));
-        Ipv4LetFlowRoutingHelper letFlowRouting;
-        internet.SetRoutingHelper(letFlowRouting);
-        break;
-      }
-    default:
-      {
-        Ipv4GlobalRoutingHelper globalRouting;
-        internet.SetRoutingHelper(globalRouting);
-        break;
-      }
-  }
-  return internet;
-}
-
-void PopulateRoutingTables(LbScheme lbScheme) {
-  switch (lbScheme) {
-    case LbScheme::ECMP:
-      Ipv4EcmpFlowRoutingHelper::PopulateRoutingTables();
-      break;
-    case LbScheme::DRILL:
-      Ipv4DrillRoutingHelper::PopulateRoutingTables();
-      break;
-    case LbScheme::LETFLOW:
-      Ipv4LetFlowRoutingHelper::PopulateRoutingTables();
-      break;
-    default:
-      Ipv4GlobalRoutingHelper::PopulateRoutingTables();
-      break;
-  }
-}
 
 int main(int argc, char* argv[]) {
   LogComponentEnable("SimpleParallelPathsExample", LOG_LEVEL_INFO);
@@ -177,7 +104,7 @@ int main(int argc, char* argv[]) {
   }
 
   if (verbose) {
-    SetLogging(lbScheme);
+    SetLogging(lbScheme, LOG_LEVEL_LOGIC);
   }
 
   // Create the nodes and links them together.
@@ -242,7 +169,7 @@ int main(int argc, char* argv[]) {
   Ipv4InterfaceContainer iiR = ipv4.Assign(ndR);
 
   // Initialize routing database and set up the routing tables in the nodes.
-  PopulateRoutingTables(lbScheme);
+  PopulateLbRoutingTables(lbScheme);
 
   std::vector<std::string> data_rates = {"400kb/s", "500kb/s", "600kb/s"};
   // iiR.GetAddress(1) retrieves the 2nd interface on the last link from

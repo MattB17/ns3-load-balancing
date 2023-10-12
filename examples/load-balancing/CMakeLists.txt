@@ -13,9 +13,9 @@ build_example(
 
 build_example(
   NAME simple-parallel-paths
-  SOURCE_FILES cdf.cc
+  SOURCE_FILES lb-utils.cc
                simple-parallel-paths.cc
-  HEADER_FILES cdf.h
+  HEADER_FILES lb-utils.h
                load-balancing-scheme.h
   LIBRARIES_TO_LINK
     ${libapplications}
