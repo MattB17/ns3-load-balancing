@@ -1,9 +1,13 @@
+#include "ns3/address.h"
 #include "ns3/applications-module.h"
 #include "ns3/core-module.h"
+#include "ns3/data-rate.h"
 #include "ns3/flow-monitor-helper.h"
+#include "ns3/inet-socket-address.h"
 #include "ns3/internet-module.h"
 #include "ns3/network-module.h"
-#include "ns3/on-off-pairs-helper.h"
+#include "ns3/on-off-helper.h"
+#include "ns3/packet-sink-helper.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/nstime.h"
 
@@ -28,17 +32,43 @@
 //                \  /
 //                 n4
 
+#define PACKET_SIZE 1400
+
+static uint16_t START_PORT = 1000;
+
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("SimpleParallelPathsExample");
 
+void InstallFlows(uint16_t min_port, Ptr<Node> src_node, Ptr<Node> dst_node,
+                  Ipv4Address dst_addr, std::string data_rate, size_t num_flows,
+                  double flow_start, double flow_end) {
+  uint16_t curr_port = min_port;
+  for (size_t flow_idx = 0; flow_idx < num_flows; flow_idx++) {
+    // Install the on/off sender on the src node to the dst node.
+    OnOffHelper onOff("ns3::TcpSocketFactory",
+                      Address(InetSocketAddress(dst_addr, curr_port)));
+    onOff.SetConstantRate(DataRate(data_rate), PACKET_SIZE);
+    ApplicationContainer src_app = onOff.Install(src_node);
+    src_app.Start(Seconds(flow_start));
+    src_app.Stop(Seconds(flow_end));
+
+    // Create a packet sink to receive the packets.
+    // Accepts a connection from any IP address sending on the `curr_port`.
+    PacketSinkHelper sink(
+      "ns3::TcpSocketFactory",
+      Address(InetSocketAddress(Ipv4Address::GetAny(), curr_port)));
+    ApplicationContainer dst_app = sink.Install(dst_node);
+    dst_app.Start(Seconds(flow_start));
+    dst_app.Stop(Seconds(flow_end));
+
+    // Increment port, next application will send from next port.
+    curr_port++;
+  }
+}
+
 int main(int argc, char* argv[]) {
   LogComponentEnable("SimpleParallelPathsExample", LOG_LEVEL_INFO);
-
-  // Packets have size 210 and the data rate is 500kb/s.
-  Config::SetDefault("ns3::OnOffApplication::PacketSize", UintegerValue(210));
-  Config::SetDefault(
-    "ns3::OnOffApplication::DataRate", StringValue("500kb/s"));
 
   // Setup Random ECMP routing in the case that we fall back to the global
   // router.
@@ -48,7 +78,7 @@ int main(int argc, char* argv[]) {
   // Experiment configuration variables. These variables apply to the experiment
   // regardless of the load balancing scheme used.
   uint32_t numNodesInCenter = 3;
-  size_t numSmallFlows = 15;
+  double load = 0.5;
 	double flowStartTime = 1.0;
 	double flowEndTime = 10.0;
   bool verbose = false;
@@ -64,9 +94,7 @@ int main(int argc, char* argv[]) {
   cmd.AddValue("numNodesInCenter",
                "Number of nodes in each level of the topology",
                numNodesInCenter);
-  cmd.AddValue("numSmallFlows",
-               "number of small flows to start in the simulation",
-               numSmallFlows);
+  cmd.AddValue("load", "Load on the network in the range [0.0, 1.0]", load);
   cmd.AddValue("flowStartTime",
                "The earliest time at which a flow can be sent",
                flowStartTime);
@@ -121,7 +149,7 @@ int main(int argc, char* argv[]) {
   Ipv4AddressHelper ipv4R;
   ipv4R.SetBase("10.1.3.0", "255.255.255.0");
 
-	int internalLinkRate = 5;
+	int internalLinkRate = 10;
 	int edgeLinkRate = numNodesInCenter * internalLinkRate;
 
   // We think of every node other than the first and last as being part of
@@ -129,7 +157,7 @@ int main(int argc, char* argv[]) {
   PointToPointHelper p2pInternal;
   p2pInternal.SetDeviceAttribute("DataRate", StringValue(
     std::to_string(internalLinkRate) + "Mbps"));
-  p2pInternal.SetChannelAttribute("Delay", StringValue("50us"));
+  p2pInternal.SetChannelAttribute("Delay", StringValue("10us"));
 
   NodeContainer nc;
   NetDeviceContainer ndc;
@@ -155,7 +183,7 @@ int main(int argc, char* argv[]) {
   PointToPointHelper p2pEdge;
   p2pEdge.SetDeviceAttribute("DataRate", StringValue(
     std::to_string(edgeLinkRate) + "Mbps"));
-  p2pEdge.SetChannelAttribute("Delay", StringValue("50us"));
+  p2pEdge.SetChannelAttribute("Delay", StringValue("10us"));
   NodeContainer nL = NodeContainer(n.Get(0), n.Get(1));
   NodeContainer nR = NodeContainer(
     n.Get(numNodesInCenter+2), n.Get(numNodesInCenter+3));
@@ -171,16 +199,27 @@ int main(int argc, char* argv[]) {
   // Initialize routing database and set up the routing tables in the nodes.
   PopulateLbRoutingTables(lbScheme);
 
-  std::vector<std::string> data_rates = {"400kb/s", "500kb/s", "600kb/s"};
-  // iiR.GetAddress(1) retrieves the 2nd interface on the last link from
-  // node n_k+2 to n_k+3.
-  OnOffPairsHelper pairsHelper = OnOffPairsHelper(
-    1000, n.Get(0), n.Get(numNodesInCenter + 3),
-    iiR.GetAddress(1), data_rates);
-	double flowLaunchEndTime = (
-		(flowEndTime - flowStartTime) / 2) + flowStartTime;
-  pairsHelper.InstallFlows(
-		numSmallFlows, flowStartTime, flowLaunchEndTime, flowEndTime);
+  // We send `load * edgeLinkRate` number of small flows (at a rate of 1Mbps).
+  // Note that `edgeLinkRate` is the network capacity in Mbps so this saturates
+  // the network to exactly load.
+  int numSmallFlows = (edgeLinkRate * load);
+  InstallFlows(START_PORT, n.Get(0), n.Get(numNodesInCenter + 3),
+               iiR.GetAddress(1), "1Mbps", numSmallFlows, flowStartTime,
+               flowEndTime);
+  // Note that in perfect load balancing each link will be loaded to exactly
+  // `load` percent. In particular, all the internal links will be saturated to
+  // `load * internalLinkRate` Mbps. Then we start up a large flow at halfway
+  // through the simulation with rate `((1 - load) * internalLinkRate) + 1` Mbps
+  // so that one of the links would be saturated at internalLinkRate + 1 Mbps
+  // under perfect load balancing.
+  double largeFlowStartTime = (
+    (flowEndTime - flowStartTime) / 2) + flowStartTime;
+  int largeFlowSendSize = (internalLinkRate * load) + 1;
+  std::string largeFlowSendRate = std::to_string(largeFlowSendSize) + "Mbps";
+  InstallFlows(START_PORT + numSmallFlows, n.Get(0),
+               n.Get(numNodesInCenter + 3), iiR.GetAddress(1),
+               largeFlowSendRate, numSmallFlows, largeFlowStartTime,
+               flowEndTime);
 
   if (tracing) {
     std::string lbDir =

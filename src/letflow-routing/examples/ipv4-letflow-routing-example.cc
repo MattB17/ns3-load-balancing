@@ -35,10 +35,6 @@ int main(int argc, char* argv[])
 {
     LogComponentEnable("LetFlowRoutingExample", LOG_LEVEL_INFO);
 
-    // Packets have size 210 and the data rate is 500kb/s.
-    Config::SetDefault("ns3::OnOffApplication::PacketSize", UintegerValue(210));
-    Config::SetDefault("ns3::OnOffApplication::DataRate", StringValue("500kb/s"));
-
     // Setup Random ECMP routing in the case that we fall back to the global
     // router.
     Config::SetDefault(
