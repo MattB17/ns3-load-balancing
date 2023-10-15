@@ -7,6 +7,7 @@ build_lib(
     model/flow-probe.cc
     model/ipv4-flow-classifier.cc
     model/ipv4-flow-probe.cc
+    model/ipv4-lb-flow-stats.cc
     model/ipv6-flow-classifier.cc
     model/ipv6-flow-probe.cc
   HEADER_FILES
@@ -16,6 +17,7 @@ build_lib(
     model/flow-probe.h
     model/ipv4-flow-classifier.h
     model/ipv4-flow-probe.h
+    model/ipv4-lb-flow-stats.h
     model/ipv6-flow-classifier.h
     model/ipv6-flow-probe.h
   LIBRARIES_TO_LINK ${libinternet}
