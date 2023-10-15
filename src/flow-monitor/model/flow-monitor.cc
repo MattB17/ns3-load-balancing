@@ -23,6 +23,9 @@
 #include "ns3/log.h"
 #include "ns3/simulator.h"
 
+#include "ipv4-lb-flow-stats.h"
+#include "ipv4-flow-classifier.h"
+
 #include <fstream>
 #include <sstream>
 
@@ -558,6 +561,61 @@ void FlowMonitor::FlowCompletionTimesToFile(std::string fileName,
     std::ofstream os(fileName, std::ios::out | std::ios::binary);
     FlowCompletionTimesToStream(os, timeUnit);
     os.close();
+}
+
+void FlowMonitor::LbPerformanceMetricsToStream(std::ostream& os,
+                                               Time::Unit timeUnit) {
+  NS_LOG_FUNCTION(this << timeUnit);
+  CheckForLostPackets();
+
+  std::map<FlowId, Ipv4FlowClassifier::FiveTuple> fiveTuples;
+  for (auto itr = m_classifiers.begin(); itr != m_classifiers.end(); itr++) {
+    if (DynamicCast<Ipv4FlowClassifier>(*itr)) {
+      fiveTuples = DynamicCast<Ipv4FlowClassifier>(*itr)->GetFiveTuples();
+    }
+  }
+
+  // Add header for the csv file.
+  os << "FlowId,SourceAddress,DestinationAddress,DelaySum,JitterSum,TxBytes,"
+     << "RxBytes,TxPackets,RxPackets";
+
+  std::map<FlowId, Ipv4FlowClassifier::FiveTuple>::iterator tuplesItr;
+  for (FlowStatsContainerCI flowI = m_flowStats.begin();
+       flowI != m_flowStats.end();
+       flowI++) {
+    os << '\n';
+    Ipv4LbFlowStats ipv4LbFlowStats;
+
+    ipv4LbFlowStats.delaySum = flowI->second.delaySum;
+    ipv4LbFlowStats.jitterSum = flowI->second.jitterSum;
+    ipv4LbFlowStats.txBytes = flowI->second.txBytes;
+    ipv4LbFlowStats.rxBytes = flowI->second.rxBytes;
+    ipv4LbFlowStats.txPackets = flowI->second.txPackets;
+    ipv4LbFlowStats.rxPackets = flowI->second.rxPackets;
+
+    tuplesItr = fiveTuples.find(flowI->first);
+    if (tuplesItr != fiveTuples.end()) {
+      ipv4LbFlowStats.sourceAddress = tuplesItr->second.sourceAddress;
+      ipv4LbFlowStats.destinationAddress = tuplesItr->second.destinationAddress;
+    }
+
+    SerializeIpv4LbFlowStatsToCsvStream(
+      os, flowI->first, ipv4LbFlowStats, timeUnit);
+  }
+}
+
+std::string FlowMonitor::LbPerformanceMetricsToString(Time::Unit timeUnit) {
+  NS_LOG_FUNCTION(this << timeUnit);
+  std::ostringstream os;
+  LbPerformanceMetricsToStream(os, timeUnit);
+  return os.str();
+}
+
+void FlowMonitor::LbPerformanceMetricsToFile(std::string fileName, Time::Unit timeUnit) {
+  NS_LOG_FUNCTION(this << fileName << timeUnit);
+  std::ofstream os(fileName, std::ios::out | std::ios::binary);
+  LbPerformanceMetricsToStream(os, timeUnit);
+  os.close();
 }
 
 } // namespace ns3

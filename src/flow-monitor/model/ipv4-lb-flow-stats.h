@@ -38,9 +38,16 @@ struct Ipv4LbFlowStats {
   uint32_t rxPackets;
 };
 
+/// Write the Ipv4LbFlowStats to a std::ostream in csv format.
+/// \param os the output stream.
+/// \param flowId the Id of the flow being written.
+/// \param ipv4LbFlowStats the load balancing statistics for the flow.
+/// \param timeUnit the unit of time for reporting time values (default is
+///                 nanoseconds).
 void SerializeIpv4LbFlowStatsToCsvStream(std::ostream& os,
                                          FlowId flowId,
-                                         Ipv4LbFlowStats& ipv4LbFlowStats);
+                                         Ipv4LbFlowStats& ipv4LbFlowStats,
+                                         Time::Unit timeUnit = Time::NS);
 
 }  // namespace ns3
 

@@ -199,4 +199,26 @@ void FlowMonitorHelper::FlowCompletionTimesToFile(std::string fileName,
     }
 }
 
+void FlowMonitorHelper::LbPerformanceMetricsToStream(std::ostream& os,
+                                                     Time::Unit timeUnit) {
+  if (m_flowMonitor) {
+    m_flowMonitor->LbPerformanceMetricsToStream(os, timeUnit);
+  }
+}
+
+std::string
+FlowMonitorHelper::LbPerformanceMetricsToString(Time::Unit timeUnit) {
+  if (m_flowMonitor) {
+    return m_flowMonitor->LbPerformanceMetricsToString(timeUnit);
+  }
+  return "";
+}
+
+void FlowMonitorHelper::LbPerformanceMetricsToFile(std::string fileName,
+                                                   Time::Unit timeUnit) {
+  if (m_flowMonitor) {
+    m_flowMonitor->LbPerformanceMetricsToFile(fileName, timeUnit);
+  }
+}
+
 } // namespace ns3

@@ -70,6 +70,9 @@ class Ipv4FlowClassifier : public FlowClassifier
     /// \returns the FiveTuple corresponding to flowId
     FiveTuple FindFlow(FlowId flowId) const;
 
+    /// A map of flow ids to FiveTuples.
+    std::map<FlowId, FiveTuple> GetFiveTuples() const;
+
     /// Comparator used to sort the vector of DSCP values
     class SortByCount
     {

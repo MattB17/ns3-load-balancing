@@ -196,6 +196,15 @@ Ipv4FlowClassifier::FindFlow(FlowId flowId) const
     return retval;
 }
 
+std::map<FlowId, Ipv4FlowClassifier::FiveTuple>
+Ipv4FlowClassifier::GetFiveTuples() const {
+  std::map<FlowId, FiveTuple> result;
+  for (auto itr = m_flowMap.begin(); itr != m_flowMap.end(); itr++) {
+    result[itr->second] = itr->first;
+  }
+  return result;
+}
+
 bool
 Ipv4FlowClassifier::SortByCount::operator()(std::pair<Ipv4Header::DscpType, uint32_t> left,
                                             std::pair<Ipv4Header::DscpType, uint32_t> right)

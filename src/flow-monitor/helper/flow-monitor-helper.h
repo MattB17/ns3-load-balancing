@@ -141,6 +141,32 @@ class FlowMonitorHelper
     void FlowCompletionTimesToFile(std::string fileName,
                                    Time::Unit timeUnit = Time::NS);
 
+    /**
+     * Writes the load balancing performance metrics to a std::ostream.
+     * \param os the output stream.
+     * \param timeUnit the unit of time for reporting time values (default is
+     *                 nanoseconds).
+     */
+    void LbPerformanceMetricsToStream(std::ostream& os,
+                                      Time::Unit timeUnit = Time::NS);
+
+    /**
+     * Same as LbPerformanceMetricsToStream but returns the output as a
+     * std::string.
+     * \param timeUnit the unit of time for reporting time values (default is
+     *                 nanoseconds).
+     */
+    std::string LbPerformanceMetricsToString(Time::Unit timeUnit = Time::NS);
+
+    /**
+     * Same as LbPerformanceMetricsToStream but writes to a file instead.
+     * \param fileName name of path of the output file that will be created.
+     * \param timeUnit the unit of time for reporting completion times (default
+     *                 is nanoseconds).
+     */
+     void LbPerformanceMetricsToFile(std::string fileName,
+                                     Time::Unit timeUnit = Time::NS);
+
   private:
     ObjectFactory m_monitorFactory;        //!< Object factory
     Ptr<FlowMonitor> m_flowMonitor;        //!< the FlowMonitor object
