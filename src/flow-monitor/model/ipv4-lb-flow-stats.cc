@@ -8,6 +8,10 @@ void SerializeIpv4LbFlowStatsToCsvStream(std::ostream& os,
                                          Time::Unit timeUnit) {
   os << flowId << "," << ipv4LbFlowStats.sourceAddress << ","
      << ipv4LbFlowStats.destinationAddress << ","
+     << ipv4LbFlowStats.timeFirstTxPacket.As(timeUnit) << ","
+     << ipv4LbFlowStats.timeLastTxPacket.As(timeUnit) << ","
+     << ipv4LbFlowStats.timeFirstRxPacket.As(timeUnit) << ","
+     << ipv4LbFlowStats.timeLastRxPacket.As(timeUnit) << ","
      << ipv4LbFlowStats.delaySum.As(timeUnit) << ","
      << ipv4LbFlowStats.jitterSum.As(timeUnit) << ","
      << ipv4LbFlowStats.txBytes << "," << ipv4LbFlowStats.rxBytes << ","

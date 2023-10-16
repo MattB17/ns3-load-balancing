@@ -17,6 +17,18 @@ struct Ipv4LbFlowStats {
   // The destination address for the flow.
   Ipv4Address destinationAddress;
 
+  // The time when the flow transmission starts.
+  Time timeFirstTxPacket;
+
+  // The time when the flow transmission ends.
+  Time timeLastTxPacket;
+
+  // The time when the packet reception begins.
+  Time timeFirstRxPacket;
+
+  // The time when the packet reception ends.
+  Time timeLastRxPacket;
+
   // Contains the sum of all end-to-end delays for all received packets of the
   // flow
   Time delaySum;

@@ -15,7 +15,6 @@
 #include "load-balancing-scheme.h"
 
 #include <iomanip>
-#include <iostream>
 #include <sstream>
 #include <string>
 
@@ -48,7 +47,6 @@ void InstallFlows(uint16_t min_port, Ptr<Node> src_node, Ptr<Node> dst_node,
                   double flow_start, double flow_end) {
   uint16_t curr_port = min_port;
   for (size_t flow_idx = 0; flow_idx < num_flows; flow_idx++) {
-    std::cout << "Installing flow on " << curr_port << std::endl;
     // Install the on/off sender on the src node to the dst node.
     OnOffHelper onOff("ns3::TcpSocketFactory",
                       Address(InetSocketAddress(dst_addr, curr_port)));
@@ -207,7 +205,6 @@ int main(int argc, char* argv[]) {
   // Note that `edgeLinkRate` is the network capacity in Mbps so this saturates
   // the network to exactly load.
   int numSmallFlows = (edgeLinkRate * load);
-  std::cout << "Number of small flows: " << numSmallFlows << std::endl;
   InstallFlows(START_PORT, n.Get(0), n.Get(numNodesInCenter + 3),
                iiR.GetAddress(1), "1Mbps", numSmallFlows, flowStartTime,
                flowEndTime);
@@ -221,7 +218,6 @@ int main(int argc, char* argv[]) {
     (flowEndTime - flowStartTime) / 2) + flowStartTime;
   int largeFlowSendSize = (internalLinkRate * load) + 1;
   std::string largeFlowSendRate = std::to_string(largeFlowSendSize) + "Mbps";
-  std::cout << "Large flow send rate: " << largeFlowSendRate << std::endl;
   InstallFlows(START_PORT + numSmallFlows, n.Get(0),
                n.Get(numNodesInCenter + 3), iiR.GetAddress(1),
                largeFlowSendRate, 1, largeFlowStartTime,
@@ -246,6 +242,7 @@ int main(int argc, char* argv[]) {
   Simulator::Run();
 
   if (tracing) {
+    flowmonHelper.SerializeToXmlFile(lbDir + "flows.flowmon", true, true);
     flowmonHelper.LbPerformanceMetricsToFile(
       lbDir + "lb-metrics.csv", Time::NS);
   }
