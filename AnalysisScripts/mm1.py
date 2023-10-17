@@ -30,7 +30,7 @@ if __name__ == "__main__":
         plt.scatter(x2, y2, marker="o", s=50, color="black")
         plt.text(x2[0] - 0.05, y2[0] + 1.5, "c", fontsize=12)
         plt.text(x2[1] - 0.05, y2[1] + 1.5, "d", fontsize=12)
-        plt.annotate(text='', xy=(x2[0]+0.03, y2[0]),
+        plt.annotate(text='', xy=(x2[1]+0.03, y2[0]),
                      xytext=(x2[1]+0.03, y2[1]),
                      arrowprops=dict(arrowstyle='<->', color='red'))
 

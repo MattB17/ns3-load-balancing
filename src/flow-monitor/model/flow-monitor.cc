@@ -578,7 +578,7 @@ void FlowMonitor::LbPerformanceMetricsToStream(std::ostream& os,
   // Add header for the csv file.
   os << "FlowId,SourceAddress,DestinationAddress,TimeFirstTxPacket,"
      << "TimeLastTxPacket,TimeFirstRxPacket,TimeLastRxPacket,DelaySum,"
-     << "JitterSum,TxBytes,RxBytes,TxPackets,RxPackets";
+     << "JitterSum,TxBytes,RxBytes,TxPackets,RxPackets,Duration,EffectiveRate";
 
   std::map<FlowId, Ipv4FlowClassifier::FiveTuple>::iterator tuplesItr;
   for (FlowStatsContainerCI flowI = m_flowStats.begin();

@@ -244,7 +244,7 @@ int main(int argc, char* argv[]) {
   if (tracing) {
     flowmonHelper.SerializeToXmlFile(lbDir + "flows.flowmon", true, true);
     flowmonHelper.LbPerformanceMetricsToFile(
-      lbDir + "lb-metrics.csv", Time::NS);
+      lbDir + "lb-metrics.csv", Time::US);
   }
 
   Simulator::Destroy();
