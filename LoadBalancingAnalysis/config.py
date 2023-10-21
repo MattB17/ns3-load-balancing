@@ -3,4 +3,4 @@
 """
 
 TIME_COLS = ["TimeFirstTxPacket", "TimeLastTxPacket", "TimeFirstRxPacket",
-             "TimeLastRxPacket", "DelaySum", "JitterSum"]
+             "TimeLastRxPacket", "DelaySum", "JitterSum", "Duration"]

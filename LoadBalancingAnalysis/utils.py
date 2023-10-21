@@ -1,8 +1,9 @@
 """ A set of utility functions used for performing analysis.
 
 """
-import numpy as np
 import re
+import numpy as np
+import pandas as pd
 from LoadBalancingAnalysis import config
 
 def get_cdf_values(dist_vals):
